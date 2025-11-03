@@ -1354,6 +1354,261 @@ Con la estructura (HTML) y el estilo (CSS) listos, el paso crítico es implement
 
 ¿Estás listo para crear el archivo scripts.js con las funciones para GET, POST, PUT y DELETE?
 
+Excelente! Esta es la fase más importante del frontend, ya que conectará el HTML/CSS con la API de Flask que has construido.
+
+Crea un archivo llamado scripts.js en la misma carpeta que index.html y styles.css.
+
+Este código maneja todo: desde cargar la lista al inicio hasta gestionar el envío de formularios y los botones de la tabla.
+
+💻 Código JavaScript (scripts.js)
+
+// scripts.js
+
+// --- CONFIGURACIÓN ---
+const API_BASE_URL = 'http://127.0.0.1:5000/api/v1/cultivos';
+const tableBody = document.getElementById('cultivoList');
+const form = document.getElementById('cultivoForm');
+const submitButton = document.getElementById('submitButton');
+const originalNameInput = document.getElementById('cultivoNombreOriginal');
+const loadingMessage = document.getElementById('loading-message');
+
+let modoEdicion = false; // Bandera para saber si estamos añadiendo o editando
+
+// --- FUNCIONES DE MANEJO DE LA API (CRUD) ---
+
+/**
+ * 1. GET (Leer): Carga y renderiza todos los cultivos.
+ */
+async function cargarCultivos() {
+    loadingMessage.textContent = 'Cargando datos de la API...';
+    try {
+        const response = await fetch(API_BASE_URL);
+        const cultivos = await response.json();
+        
+        loadingMessage.style.display = 'none'; // Ocultar mensaje de carga
+        renderizarTabla(cultivos);
+
+    } catch (error) {
+        console.error('Error al cargar cultivos:', error);
+        loadingMessage.textContent = 'ERROR: No se pudo conectar con el servidor Flask. Asegúrate de que esté corriendo en http://127.0.0.1:5000.';
+        loadingMessage.style.color = 'var(--color-danger)';
+    }
+}
+
+/**
+ * 2. POST / PUT (Crear / Actualizar): Envía datos del formulario a la API.
+ */
+async function manejarEnvioFormulario(event) {
+    event.preventDefault(); // Detener el envío por defecto
+
+    const datosCultivo = obtenerDatosFormulario();
+
+    if (!datosCultivo.nombre || !datosCultivo.fecha_siembra || !datosCultivo.fecha_cosecha) {
+        alert('Por favor, rellena el nombre, la fecha de siembra y la fecha de cosecha.');
+        return;
+    }
+
+    const nombreOriginal = originalNameInput.value;
+    let url = API_BASE_URL;
+    let method = 'POST';
+    
+    // Si estamos en modo edición, cambiamos el método y la URL
+    if (modoEdicion) {
+        url = `${API_BASE_URL}/${nombreOriginal}`;
+        method = 'PUT';
+    }
+
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(datosCultivo),
+        });
+
+        const resultado = await response.json();
+
+        if (response.ok) {
+            alert(resultado.mensaje || (modoEdicion ? 'Cultivo actualizado.' : 'Cultivo añadido.'));
+            resetFormulario();
+            cargarCultivos(); // Recargar la tabla
+        } else {
+            alert(`Error ${response.status}: ${resultado.error || 'Algo salió mal en el servidor.'}`);
+        }
+    } catch (error) {
+        console.error('Error al enviar el formulario:', error);
+        alert('Error de conexión con la API.');
+    }
+}
+
+/**
+ * 3. DELETE (Eliminar): Elimina un cultivo por nombre.
+ */
+async function eliminarCultivo(nombreCultivo) {
+    if (!confirm(`¿Estás seguro de que deseas eliminar el cultivo: ${nombreCultivo}?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/${nombreCultivo}`, {
+            method: 'DELETE',
+        });
+
+        const resultado = await response.json();
+
+        if (response.ok) {
+            alert(resultado.mensaje || 'Cultivo eliminado.');
+            cargarCultivos(); // Recargar la tabla
+        } else {
+            alert(`Error ${response.status}: ${resultado.error || 'No se pudo eliminar el cultivo.'}`);
+        }
+    } catch (error) {
+        console.error('Error al eliminar:', error);
+        alert('Error de conexión con la API.');
+    }
+}
+
+
+// --- FUNCIONES DE UTILIDAD Y RENDERIZADO ---
+
+/**
+ * Recopila los datos del formulario.
+ */
+function obtenerDatosFormulario() {
+    return {
+        nombre: document.getElementById('nombre').value.trim(),
+        zona: document.getElementById('zona').value.trim(),
+        fecha_siembra: document.getElementById('fecha_siembra').value,
+        fecha_cosecha: document.getElementById('fecha_cosecha').value,
+        precio_compra: parseFloat(document.getElementById('precio_compra').value) || 0.0,
+        precio_venta: parseFloat(document.getElementById('precio_venta').value) || 0.0,
+        dias_alerta: parseInt(document.getElementById('dias_alerta').value) || 0,
+        notas: document.getElementById('notas').value.trim(),
+    };
+}
+
+/**
+ * Pinta la tabla HTML con los datos obtenidos de la API.
+ */
+function renderizarTabla(cultivos) {
+    tableBody.innerHTML = '';
+    cultivos.forEach(cultivo => {
+        const row = tableBody.insertRow();
+        let claseCosecha = 'cosecha-futura';
+        
+        // Determinar la clase CSS según el estado de días_restantes
+        if (cultivo.dias_restantes.includes('COSECHA HOY')) {
+            claseCosecha = 'cosecha-hoy';
+        } else if (cultivo.dias_restantes.includes('Cosechado hace')) {
+            claseCosecha = 'cosecha-pasada';
+        }
+        
+        // Calcular margen potencial
+        const margen = (cultivo.precio_venta - cultivo.precio_compra).toFixed(2);
+        
+        // Renderizado de las celdas
+        row.insertCell().textContent = cultivo.nombre;
+        row.insertCell().textContent = cultivo.zona;
+        row.insertCell().textContent = cultivo.fecha_siembra;
+        row.insertCell().textContent = cultivo.fecha_cosecha;
+        
+        const cellFaltan = row.insertCell();
+        cellFaltan.textContent = cultivo.dias_restantes;
+        cellFaltan.classList.add(claseCosecha);
+        
+        row.insertCell().textContent = `€${margen}`;
+
+        // Celda de Acciones (Botones)
+        const cellAcciones = row.insertCell();
+        cellAcciones.classList.add('action-buttons');
+        
+        const btnEditar = document.createElement('button');
+        btnEditar.textContent = 'Editar';
+        btnEditar.classList.add('edit-btn');
+        btnEditar.onclick = () => cargarParaEdicion(cultivo);
+        
+        const btnEliminar = document.createElement('button');
+        btnEliminar.textContent = 'Eliminar';
+        btnEliminar.classList.add('delete-btn');
+        btnEliminar.onclick = () => eliminarCultivo(cultivo.nombre);
+        
+        cellAcciones.appendChild(btnEditar);
+        cellAcciones.appendChild(btnEliminar);
+    });
+}
+
+/**
+ * Carga los datos de un cultivo seleccionado al formulario para su edición.
+ */
+function cargarParaEdicion(cultivo) {
+    // 1. Cargar datos al formulario
+    document.getElementById('nombre').value = cultivo.nombre;
+    document.getElementById('zona').value = cultivo.zona;
+    document.getElementById('fecha_siembra').value = cultivo.fecha_siembra;
+    document.getElementById('fecha_cosecha').value = cultivo.fecha_cosecha;
+    document.getElementById('precio_compra').value = cultivo.precio_compra.toFixed(2);
+    document.getElementById('precio_venta').value = cultivo.precio_venta.toFixed(2);
+    document.getElementById('dias_alerta').value = cultivo.dias_alerta;
+    document.getElementById('notas').value = cultivo.notas;
+    
+    // 2. Configurar el modo edición
+    modoEdicion = true;
+    originalNameInput.value = cultivo.nombre; // Guardar el nombre original para la URL PUT/DELETE
+    submitButton.textContent = `Guardar Cambios de ${cultivo.nombre}`;
+    submitButton.classList.add('edit-btn');
+    submitButton.classList.remove('delete-btn');
+    
+    // Opcional: Desplazar la vista al formulario para que el usuario pueda editar inmediatamente
+    document.getElementById('form-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+/**
+ * Limpia el formulario y vuelve al modo Añadir.
+ */
+function resetFormulario() {
+    form.reset();
+    modoEdicion = false;
+    originalNameInput.value = '';
+    submitButton.textContent = 'Añadir Cultivo';
+    submitButton.classList.remove('edit-btn');
+    submitButton.classList.remove('delete-btn');
+    // Asegurar valores por defecto después del reset()
+    document.getElementById('precio_compra').value = '0.00';
+    document.getElementById('precio_venta').value = '0.00';
+    document.getElementById('dias_alerta').value = '7';
+}
+
+
+// --- INICIALIZACIÓN ---
+
+// Escucha el evento de envío del formulario
+form.addEventListener('submit', manejarEnvioFormulario);
+
+// Añade un botón de "Cancelar Edición" si el usuario quiere volver al modo Añadir
+const btnCancelar = document.createElement('button');
+btnCancelar.textContent = 'Limpiar / Cancelar Edición';
+btnCancelar.classList.add('delete-btn');
+btnCancelar.type = 'button'; // Importante para que no active el submit
+btnCancelar.onclick = resetFormulario;
+form.appendChild(btnCancelar);
+
+// Carga los cultivos al iniciar la página
+document.addEventListener('DOMContentLoaded', cargarCultivos);
+
+Pasos Finales de la Implementación Web
+Guarda los tres archivos: Asegúrate de que index.html, styles.css, y scripts.js estén en la misma carpeta.
+
+Verifica el Backend: Confirma que tu servidor Flask (app_backend.py) esté corriendo en tu terminal (ejecuta python app_backend.py).
+
+Abre el Frontend: Abre el archivo index.html directamente en tu navegador (haz doble clic en él).
+
+Si todo está correcto, deberías ver la interfaz web cargarse, y la tabla se poblará automáticamente con los datos de tu cultivos.json que son servidos por la API de Flask.
+
+¡El sistema de gestión de cultivos ya es una aplicación completa, incluyendo GUI de escritorio y una interfaz web conectada a una API!
+
+
+
 
 
 
