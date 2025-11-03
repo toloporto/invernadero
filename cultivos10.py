@@ -105,7 +105,7 @@ class AppCultivos(tk.Tk):
     """Clase principal de la aplicación GUI con Tema Oscuro."""
     def __init__(self):
         super().__init__()
-        self.title("Asistente de Cultivos (v15.1 - Análisis Temporal)")
+        self.title("Asistente de Cultivos (v16.0 - Análisis Completo)")
         self.geometry("1050x700") 
         
         self.cultivo_seleccionado_indice = None
@@ -478,8 +478,8 @@ class AppCultivos(tk.Tk):
 
     def analizar_ventas_externas(self):
         """
-        Carga el archivo CSV externo, calcula métricas financieras, genera un gráfico de barras 
-        (Ventas por Producto) y un gráfico de líneas (Tendencia Temporal).
+        Carga el archivo CSV externo, calcula métricas financieras, y genera tres gráficos:
+        Ventas por Producto, Tendencia Temporal, y Ventas por Región.
         """
         nombre_archivo = NOMBRE_ARCHIVO_VENTAS
         
@@ -516,37 +516,52 @@ class AppCultivos(tk.Tk):
         df['Num_Mes'] = df['Mes'].map(mapa_meses)
         ventas_por_mes = df.groupby(['Num_Mes', 'Mes'])['Venta_Total'].sum().reset_index(level=1).sort_values(by='Num_Mes')
         
-        print("\n--- REPORTE DE VENTAS POR MES ---")
-        print(ventas_por_mes[['Mes', 'Venta_Total']].to_string(index=False))
+        # 5. Análisis Agrupado por Región (NUEVO)
+        ventas_por_region = df.groupby('Region')['Venta_Total'].sum().sort_values(ascending=False)
+        
+        print("\n--- REPORTE DE VENTAS POR REGIÓN ---")
+        print(ventas_por_region.to_string())
 
         
-        # 5. VISUALIZACIÓN DE DATOS con Matplotlib
+        # 6. VISUALIZACIÓN DE DATOS con Matplotlib (Tres Subplots)
         try:
             plt.style.use('dark_background') 
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
-            fig.suptitle('Análisis de Ventas Externas (Producto y Temporal)', color='white', fontsize=16)
+            # Configuración de 1 fila y 3 columnas
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
+            fig.suptitle('Análisis Detallado de Ventas Externas (Producto, Temporal y Región)', color='white', fontsize=16)
 
-            # Gráfico 1: Ventas por Producto (Barras)
+            
+            # --- Gráfico 1: Ventas por Producto (Barras) ---
             ventas_por_producto.plot(kind='bar', color='#1E8449', ax=ax1) 
-            ax1.set_title('Ventas Totales por Tipo de Producto', color='white')
+            ax1.set_title('1. Ventas por Producto', color='white')
             ax1.set_xlabel('Producto', color='white')
             ax1.set_ylabel('Venta Total (€)', color='white')
             ax1.tick_params(axis='x', rotation=45, colors='white')
             ax1.tick_params(axis='y', colors='white')
             ax1.grid(axis='y', linestyle='--', alpha=0.4) 
             
-            # Gráfico 2: Ventas por Mes (Líneas) 
+            # --- Gráfico 2: Ventas por Mes (Líneas) ---
             ax2.plot(ventas_por_mes['Mes'], ventas_por_mes['Venta_Total'], 
                      marker='o', linestyle='-', color='#007BFF', linewidth=3)
-            ax2.set_title('Tendencia de Ventas a lo Largo del Tiempo', color='white')
+            ax2.set_title('2. Tendencia Temporal (Mes)', color='white')
             ax2.set_xlabel('Mes', color='white')
             ax2.set_ylabel('Venta Total (€)', color='white')
             ax2.tick_params(axis='x', rotation=0, colors='white')
             ax2.tick_params(axis='y', colors='white')
             ax2.grid(axis='both', linestyle='--', alpha=0.4) 
             
+            # --- Gráfico 3: Ventas por Región (Barras) ---
+            ventas_por_region.plot(kind='bar', color='#FFC107', ax=ax3) 
+            ax3.set_title('3. Ventas por Región', color='white')
+            ax3.set_xlabel('Región', color='white')
+            ax3.set_ylabel('Venta Total (€)', color='white')
+            ax3.tick_params(axis='x', rotation=45, colors='white')
+            ax3.tick_params(axis='y', colors='white')
+            ax3.grid(axis='y', linestyle='--', alpha=0.4) 
+
+            
             plt.tight_layout(rect=[0, 0.03, 1, 0.95]) 
-            messagebox.showinfo("Análisis Completo", "Se han generado dos gráficos de análisis: por Producto y Temporal.")
+            messagebox.showinfo("Análisis Completo", "Se han generado TRES gráficos de análisis: Producto, Temporal y Región.")
             plt.show() 
 
         except Exception as e:
@@ -554,7 +569,6 @@ class AppCultivos(tk.Tk):
 
 
     def actualizar_lista_cultivos(self):
-        # ... (método para actualizar lista Treeview)
         for item in self.lista_tree.get_children():
             self.lista_tree.delete(item)
             
@@ -595,7 +609,6 @@ class AppCultivos(tk.Tk):
 
 
     def revisar_cosechas_al_inicio(self):
-        # ... (método para revisar cosechas)
         hoy = datetime.date.today()
         cosechas_listas = []
         for cultivo in lista_cultivos:
@@ -613,9 +626,3 @@ class AppCultivos(tk.Tk):
 if __name__ == "__main__":
     app = AppCultivos()
     app.mainloop()
-
-  
-
-        
-
-     
