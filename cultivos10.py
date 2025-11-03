@@ -12,8 +12,8 @@ from tkcalendar import Calendar
 # --- IMPORTS PARA ANÁLISIS DE DATOS ---
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression # Nuevo para la predicción
-import numpy as np # Necesario para la manipulación de arrays en scikit-learn
+from sklearn.linear_model import LinearRegression 
+import numpy as np 
 
 # --- CONFIGURACIÓN DE DATOS PERMANENTES ---
 lista_cultivos = []
@@ -35,7 +35,8 @@ COLOR_ALERTA_CLARA = '#FFC107'
 
 class Cultivo:
     """Clase base para guardar la información de un cultivo, incluyendo datos financieros y de ubicación."""
-    def __init__(self, nombre, fecha_siembra, fecha_cosecha, notas="", zona="", precio_compra=0.0, precio_venta=0.0):
+    # Nuevo parámetro: dias_alerta
+    def __init__(self, nombre, fecha_siembra, fecha_cosecha, notas="", zona="", precio_compra=0.0, precio_venta=0.0, dias_alerta=0):
         self.nombre = nombre
         self.fecha_siembra = fecha_siembra
         self.fecha_cosecha = fecha_cosecha
@@ -43,6 +44,7 @@ class Cultivo:
         self.zona = zona 
         self.precio_compra = precio_compra 
         self.precio_venta = precio_venta 
+        self.dias_alerta = dias_alerta # <- NUEVO CAMPO
 
 # --- 2. FUNCIONES DE MANEJO DE ARCHIVOS Y DATOS ---
 
@@ -71,9 +73,11 @@ def cargar_cultivos():
                 zona = item.get("zona", "") 
                 precio_compra = float(item.get("precio_compra", 0.0))
                 precio_venta = float(item.get("precio_venta", 0.0))
+                dias_alerta = int(item.get("dias_alerta", 0)) # <- NUEVO CAMPO
                 
                 if siembra and cosecha:
-                    nuevo = Cultivo(item["nombre"], siembra, cosecha, notas, zona, precio_compra, precio_venta)
+                    # Pasar el nuevo argumento al constructor:
+                    nuevo = Cultivo(item["nombre"], siembra, cosecha, notas, zona, precio_compra, precio_venta, dias_alerta)
                     lista_cultivos.append(nuevo)
                     
     except Exception as e:
@@ -90,7 +94,8 @@ def guardar_cultivos():
             "notas": cultivo.notas,
             "zona": cultivo.zona, 
             "precio_compra": cultivo.precio_compra,
-            "precio_venta": cultivo.precio_venta 
+            "precio_venta": cultivo.precio_venta,
+            "dias_alerta": cultivo.dias_alerta # <- NUEVO CAMPO
         }
         datos_para_json.append(cultivo_dict)
         
@@ -107,7 +112,7 @@ class AppCultivos(tk.Tk):
     """Clase principal de la aplicación GUI con Tema Oscuro."""
     def __init__(self):
         super().__init__()
-        self.title("Asistente de Cultivos (v17.0 - Predicción Integrada)")
+        self.title("Asistente de Cultivos (v18.0 - Alarmas Inteligentes)")
         self.geometry("1050x700") 
         
         self.cultivo_seleccionado_indice = None
@@ -186,6 +191,7 @@ class AppCultivos(tk.Tk):
         self.zona_var.set("")
         self.compra_var.set("")
         self.venta_var.set("")
+        self.dias_alerta_var.set("7") # <- RESTAURAR VALOR POR DEFECTO
         self.fecha_siembra_obj = None
         self.fecha_cosecha_obj = None
         
@@ -212,6 +218,7 @@ class AppCultivos(tk.Tk):
         self.zona_var = tk.StringVar()
         self.compra_var = tk.StringVar()
         self.venta_var = tk.StringVar()
+        self.dias_alerta_var = tk.StringVar(value="7") # Valor por defecto
 
         # Nombre, Zona, Fechas, Precios, Notas 
         ttk.Label(frame_agregar, text="Nombre:").pack(fill='x', pady=2)
@@ -243,6 +250,14 @@ class AppCultivos(tk.Tk):
 
         ttk.Label(frame_agregar, text="Notas (Opcional):").pack(fill='x', pady=2)
         ttk.Entry(frame_agregar, textvariable=self.notas_var).pack(fill='x', pady=1)
+        
+        # --- NUEVO WIDGET: ALARMA INTELIGENTE ---
+        frame_alerta = ttk.LabelFrame(frame_agregar, text="🔔 Alarma Inteligente", padding="5")
+        frame_alerta.pack(fill='x', pady=5)
+        
+        ttk.Label(frame_alerta, text="Días de Alerta Previa a Cosecha:").pack(fill='x', pady=2)
+        ttk.Entry(frame_alerta, textvariable=self.dias_alerta_var).pack(fill='x', pady=1)
+        # ----------------------------------------
         
         self.btn_guardar = ttk.Button(frame_agregar, text="Añadir a la Lista", 
                                      command=self.manejar_agregar_o_editar, style='Principal.TButton')
@@ -365,23 +380,36 @@ class AppCultivos(tk.Tk):
         fecha_cosecha = self.fecha_cosecha_obj
         notas = self.notas_var.get().strip()
         zona = self.zona_var.get().strip()
+        
         try:
             precio_compra = float(self.compra_var.get().strip() or 0.0)
             precio_venta = float(self.venta_var.get().strip() or 0.0)
-        except ValueError:
-            messagebox.showerror("Error", "Los campos de Costo y Venta deben ser números válidos.")
+            
+            # --- NUEVA VALIDACIÓN DE ALARMA ---
+            dias_alerta = int(self.dias_alerta_var.get().strip() or 0)
+            if dias_alerta < 0:
+                raise ValueError("La alarma no puede tener días negativos.")
+            # -----------------------------------
+            
+        except ValueError as e:
+            messagebox.showerror("Error", f"Los campos de Costo, Venta o Días de Alerta deben ser números válidos. {e}")
             return
+            
         if not nombre or not fecha_siembra or not fecha_cosecha:
             messagebox.showerror("Error", "Debe completar el nombre y seleccionar ambas fechas.")
             return
+            
         if fecha_cosecha < fecha_siembra:
             messagebox.showerror("Error", "La fecha de cosecha no puede ser anterior a la siembra.")
             return
+            
         if self.cultivo_seleccionado_indice is None:
-            nuevo_cultivo = Cultivo(nombre, fecha_siembra, fecha_cosecha, notas, zona, precio_compra, precio_venta)
+            # Modo Añadir (incluye dias_alerta)
+            nuevo_cultivo = Cultivo(nombre, fecha_siembra, fecha_cosecha, notas, zona, precio_compra, precio_venta, dias_alerta)
             lista_cultivos.append(nuevo_cultivo)
             msg = f"'{nombre}' añadido con éxito."
         else:
+            # Modo Editar (incluye dias_alerta)
             indice = self.cultivo_seleccionado_indice
             cultivo_a_editar = lista_cultivos[indice]
             cultivo_a_editar.nombre = nombre
@@ -391,7 +419,9 @@ class AppCultivos(tk.Tk):
             cultivo_a_editar.zona = zona
             cultivo_a_editar.precio_compra = precio_compra
             cultivo_a_editar.precio_venta = precio_venta
+            cultivo_a_editar.dias_alerta = dias_alerta # <- ASIGNAR NUEVO VALOR
             msg = f"'{nombre}' actualizado con éxito."
+            
         guardar_cultivos()
         self.actualizar_lista_cultivos()
         self.revisar_cosechas_al_inicio()
@@ -408,12 +438,15 @@ class AppCultivos(tk.Tk):
         except ValueError:
             messagebox.showerror("Error", "Error al identificar el cultivo.")
             return
+            
         cultivo_a_editar = lista_cultivos[indice]
         self.nombre_var.set(cultivo_a_editar.nombre)
         self.notas_var.set(cultivo_a_editar.notas)
         self.zona_var.set(cultivo_a_editar.zona)
         self.compra_var.set(f"{cultivo_a_editar.precio_compra:.2f}")
         self.venta_var.set(f"{cultivo_a_editar.precio_venta:.2f}")
+        self.dias_alerta_var.set(str(cultivo_a_editar.dias_alerta)) # <- MOSTRAR EL VALOR
+        
         self.fecha_siembra_obj = cultivo_a_editar.fecha_siembra
         self.siembra_display_var.set(cultivo_a_editar.fecha_siembra.strftime('%Y-%m-%d'))
         self.fecha_cosecha_obj = cultivo_a_editar.fecha_cosecha
@@ -460,7 +493,7 @@ class AppCultivos(tk.Tk):
             return
         encabezados = [
             "Nombre", "Zona", "Fecha_Siembra", "Fecha_Cosecha", 
-            "Costo_Compra_(€)", "Venta_Estimada_(€)", "Margen_Potencial_(€)", "Notas"
+            "Costo_Compra_(€)", "Venta_Estimada_(€)", "Margen_Potencial_(€)", "Dias_Alerta", "Notas"
         ]
         try:
             with open(nombre_archivo_csv, 'w', newline='', encoding='utf-8') as csvfile:
@@ -472,7 +505,7 @@ class AppCultivos(tk.Tk):
                         cultivo.nombre, cultivo.zona, cultivo.fecha_siembra.strftime('%Y-%m-%d'),
                         cultivo.fecha_cosecha.strftime('%Y-%m-%d'),
                         f"{cultivo.precio_compra:.2f}", f"{cultivo.precio_venta:.2f}",
-                        f"{margen:.2f}", cultivo.notas
+                        f"{margen:.2f}", cultivo.dias_alerta, cultivo.notas
                     ])
             messagebox.showinfo("Éxito", f"Datos exportados correctamente a:\n{nombre_archivo_csv}")
         except Exception as e:
@@ -524,44 +557,34 @@ class AppCultivos(tk.Tk):
         
         
         # --- 6. PREDICCIÓN DE VENTAS (REGRESIÓN LINEAL) ---
-        
-        # Preparamos los datos para el modelo X (Meses) y Y (Ventas)
         X = ventas_por_mes_df['Num_Mes'].values.reshape(-1, 1) 
         Y = ventas_por_mes_df['Venta_Total'].values
         
-        # Creamos y entrenamos el modelo
         modelo_regresion = LinearRegression()
         modelo_regresion.fit(X, Y)
         
-        # Hacemos una predicción para el siguiente mes
         ultimo_mes_num = ventas_por_mes_df['Num_Mes'].max()
         mes_futuro_num = ultimo_mes_num + 1
         
-        # Calculamos el nombre del mes futuro para la visualización (Ej: Abr -> May)
         meses_lista = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-        # Usamos el operador % para volver a Enero si pasamos de Diciembre (ciclo anual)
         mes_futuro_nombre = meses_lista[(mes_futuro_num - 1) % 12] 
-        if mes_futuro_num > 12: # Si el mes futuro pasa de Diciembre, ajustamos el nombre para que no se repita si hay datos de más de 12 meses.
+        if mes_futuro_num > 12: 
              mes_futuro_nombre = f"Mes {mes_futuro_num}" 
 
-        # Predecimos la venta para ese mes
         prediccion_futura = modelo_regresion.predict(np.array([[mes_futuro_num]]))[0]
         
         print("\n--- PREDICCIÓN DE VENTAS ---")
         print(f"Predicción de venta para {mes_futuro_nombre}: €{prediccion_futura:.2f}")
 
-        # Añadimos la predicción al DataFrame temporal para el gráfico
-        X_pred = np.append(X, [[mes_futuro_num]], axis=0) # Incluimos el mes futuro
-        Y_tendencia = modelo_regresion.predict(X_pred)     # Calculamos toda la línea de tendencia
+        X_pred = np.append(X, [[mes_futuro_num]], axis=0) 
+        Y_tendencia = modelo_regresion.predict(X_pred)     
         
-        # Preparamos las etiquetas del eje X para el gráfico
         labels_x = ventas_por_mes_df['Mes'].tolist() + [f"Pred. {mes_futuro_nombre}"]
         
         
         # --- 7. VISUALIZACIÓN DE DATOS con Matplotlib (Tres Subplots) ---
         try:
             plt.style.use('dark_background') 
-            # Configuración de 1 fila y 3 columnas
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
             fig.suptitle(f'Análisis de Ventas (Predicción {mes_futuro_nombre}: €{prediccion_futura:.2f})', color='white', fontsize=16)
 
@@ -576,10 +599,8 @@ class AppCultivos(tk.Tk):
             ax1.grid(axis='y', linestyle='--', alpha=0.4) 
             
             # --- Gráfico 2: Ventas por Mes (Líneas con Predicción) ---
-            # Datos Históricos
             ax2.plot(ventas_por_mes_df['Mes'], ventas_por_mes_df['Venta_Total'], 
                      marker='o', linestyle='-', color='#007BFF', linewidth=3, label='Ventas Históricas')
-            # Línea de Tendencia y Predicción
             ax2.plot(labels_x, Y_tendencia, 
                      linestyle='--', color='#FFC107', linewidth=2, label='Predicción Lineal')
                      
@@ -650,17 +671,44 @@ class AppCultivos(tk.Tk):
 
 
     def revisar_cosechas_al_inicio(self):
+        """Revisa si hay cultivos listos para cosechar o que necesitan una alerta temprana."""
         hoy = datetime.date.today()
-        cosechas_listas = []
+        cosechas_hoy = []
+        alertas_tempranas = []
+        
         for cultivo in lista_cultivos:
-            if cultivo.fecha_cosecha <= hoy:
-                cosechas_listas.append(cultivo.nombre)
-        if cosechas_listas:
-            mensaje = "¡ATENCIÓN! Cosecha Pendiente:\n" + ", ".join(cosechas_listas)
+            dias_restantes = (cultivo.fecha_cosecha - hoy).days
+            
+            if dias_restantes < 0:
+                # Cultivo ya cosechado
+                continue
+            elif dias_restantes == 0:
+                # Cosecha hoy
+                cosechas_hoy.append(cultivo.nombre)
+            elif 0 < dias_restantes <= cultivo.dias_alerta:
+                # Alerta temprana: entre 1 día y los 'dias_alerta' configurados
+                alertas_tempranas.append(f"{cultivo.nombre} (Cosecha en {dias_restantes} días)")
+
+        
+        mensaje = ""
+        titulo = ""
+        
+        if cosechas_hoy:
+            mensaje += "⚠️ ¡COSECHA PENDIENTE HOY! ⚠️\n" + ", ".join(cosechas_hoy)
+            titulo = "¡ALERTA MÁXIMA!"
+        
+        if alertas_tempranas:
+            if mensaje:
+                mensaje += "\n\n"
+            mensaje += "🔔 Preparación de Cosecha:\n" + "\n".join(alertas_tempranas)
+            if not titulo:
+                 titulo = "Alerta Temprana"
+
+        if mensaje:
             self.recordatorio_label.config(text=mensaje, style='Alerta.TLabel')
-            messagebox.showwarning("¡Recordatorio de Cosecha!", mensaje)
+            messagebox.showwarning(titulo, mensaje)
         else:
-            self.recordatorio_label.config(text="Todo al día. Ninguna cosecha lista hoy.", style='TLabel', foreground=COLOR_ENFASIS_VERDE)
+            self.recordatorio_label.config(text="Todo al día. Ninguna cosecha ni alerta activa.", style='TLabel', foreground=COLOR_ENFASIS_VERDE)
 
 
 # --- 5. INICIO DE LA APLICACIÓN ---
