@@ -998,6 +998,67 @@ Verifica que el archivo cultivos.json se ha actualizado con el nuevo cultivo.
 
 Una vez que hayas verificado que puedes agregar datos de forma remota, podemos continuar con las funcionalidades CRUD (Crear, Leer, Actualizar, Eliminar).
 
+Resumen de la API:OperaciónMétodoURLFunciónLeer (todos)GET/api/v1/cultivosListar todos los cultivos.CrearPOST/api/v1/cultivosAñadir un nuevo cultivo (requiere JSON).ActualizarPUT/api/v1/cultivos/<nombre>Reemplazar/Actualizar todos los datos de un cultivo (requiere JSON).EliminarDELETE/api/v1/cultivos/<nombre>Eliminar un cultivo por su nombre.Hemos terminado la fase de Desarrollo Web (Backend). El siguiente y último objetivo de tu lista era:
+
+Operación,Método,URL,Función
+Leer (todos),GET,/api/v1/cultivos,Listar todos los cultivos.
+Crear,POST,/api/v1/cultivos,Añadir un nuevo cultivo (requiere JSON).
+Actualizar,PUT,/api/v1/cultivos/<nombre>,Reemplazar/Actualizar todos los datos de un cultivo (requiere JSON).
+Eliminar,DELETE,/api/v1/cultivos/<nombre>,Eliminar un cultivo por su nombre.
+
+Asistente de programación
+¡Excelente! Vamos a lanzar la aplicación para verificar que todo el código del backend, incluyendo el CRUD completo, esté funcionando.
+
+🚀 Prueba del Servidor Flask
+Abre tu Terminal/Símbolo del Sistema (si no lo tienes abierto o está ocupado con la ejecución anterior).
+
+Asegúrate de estar en la carpeta donde guardaste el archivo app_backend.py.
+
+Ejecuta el servidor con el comando:
+
+python app_backend.py
+
+Deberías ver una salida similar a esta, indicando que el servidor está corriendo en el puerto 5000:
+
+Iniciando servidor Flask...
+ * Serving Flask app 'app_backend'
+ * Debug mode: on
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+ * Restarting with stat
+Iniciando servidor Flask...
+ * Debugger is active!
+ * Debugger PIN: XXX-XXX-XXX
+
+Prueba de Lectura (GET)
+Abre tu navegador y navega a la URL base de tu API:
+
+URL: http://127.0.0.1:5000/
+
+Resultado esperado: Debes ver el mensaje de bienvenida y la lista de los cuatro endpoints CRUD que acabamos de implementar.
+
+{
+  "endpoints_disponibles": {
+    "/api/v1/cultivos (DELETE)": "Elimina un cultivo por nombre",
+    "/api/v1/cultivos (GET)": "Obtiene todos los cultivos",
+    "/api/v1/cultivos (POST)": "Agrega un nuevo cultivo",
+    "/api/v1/cultivos (PUT)": "Actualiza completamente un cultivo por nombre"
+  },
+  "mensaje": "Servidor de Asistente de Cultivos (API) activo.",
+  "status": "ok"
+}
+
+Ahora, visita la URL de los cultivos:
+
+URL: http://127.0.0.1:5000/api/v1/cultivos
+
+Resultado esperado: Deberías ver tus datos de cultivos.json como una lista JSON, incluyendo el campo calculado dias_restantes para cada cultivo.
+
+2. Siguiente Paso
+El backend ya está completo con la API RESTful. Ahora, el siguiente y último paso según tu plan original es construir la interfaz web.
+
+¿Estás listo para crear la interfaz de usuario web (Frontend) (HTML, CSS y JavaScript) que se conectará a esta API?
 
 
 
