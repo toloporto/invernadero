@@ -694,6 +694,315 @@ Con estos cambios, tu aplicación ahora es capaz de gestionar alarmas personaliz
 ¿Deseas que te muestre el código completo de cultivos.py con todas estas modificaciones antes de pasar al último objetivo (Desarrollo Web / Backend)?
 
 
+¡Excelente! Pasar al Desarrollo Web con Flask es el siguiente gran hito. Esto te dará la flexibilidad de acceder y, potencialmente, modificar tus datos de cultivos desde cualquier dispositivo a través de un navegador web, moviéndote de una aplicación puramente local a una solución cliente-servidor.
+
+Vamos a empezar con el backend.
+
+Fase 1: Configuración del Backend (Flask)
+El plan es crear un archivo app_backend.py que correrá el servidor, leerá cultivos.json y lo expondrá a través de una API REST simple.
+
+1. Requisito Adicional
+Si aún no lo tienes instalado, abre tu terminal o entorno virtual y ejecuta:
+
+pip install flask
+
+2. Código del Servidor Flask (app_backend.py)
+Crea un nuevo archivo en la misma carpeta que cultivos.py y cultivos.json llamado app_backend.py.
+
+Este código inicia un servidor muy básico y tiene una ruta principal para obtener todos los datos de cultivos.
+# app_backend.py
+
+from flask import Flask, jsonify, request
+import json
+import os
+from datetime import datetime
+
+# --- CONFIGURACIÓN ---
+NOMBRE_ARCHIVO_CULTIVOS = "cultivos.json"
+
+# Inicialización de la aplicación Flask
+app = Flask(__name__)
+
+# Función para cargar los datos del JSON
+def cargar_datos_cultivos():
+    """Lee el archivo JSON de cultivos. Si no existe, devuelve una lista vacía."""
+    if not os.path.exists(NOMBRE_ARCHIVO_CULTIVOS):
+        return []
+    try:
+        with open(NOMBRE_ARCHIVO_CULTIVOS, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error al cargar datos JSON: {e}")
+        return []
+
+# --- RUTAS DE LA API (Endpoints) ---
+
+@app.route('/', methods=['GET'])
+def index():
+    """Ruta de bienvenida/prueba."""
+    return jsonify({
+        "status": "ok",
+        "mensaje": "Servidor de Asistente de Cultivos (API) activo.",
+        "endpoints_disponibles": {
+            "/api/v1/cultivos": "GET (Obtiene todos los cultivos)"
+        }
+    })
+
+
+@app.route('/api/v1/cultivos', methods=['GET'])
+def obtener_cultivos():
+    """
+    Endpoint para obtener la lista completa de cultivos.
+    """
+    cultivos = cargar_datos_cultivos()
+    
+    # Opcional: Añadir un campo "dias_restantes" dinámico a cada cultivo antes de enviarlo.
+    hoy = datetime.now().date()
+    
+    for cultivo in cultivos:
+        try:
+            fecha_cosecha = datetime.strptime(cultivo["fecha_cosecha"], '%Y-%m-%d').date()
+            dias_restantes = (fecha_cosecha - hoy).days
+            
+            # Formateamos el resultado de forma más amigable
+            if dias_restantes < 0:
+                cultivo['dias_restantes'] = f"Cosechado hace {abs(dias_restantes)} días"
+            elif dias_restantes == 0:
+                cultivo['dias_restantes'] = "¡COSECHA HOY!"
+            else:
+                cultivo['dias_restantes'] = f"{dias_restantes} días"
+                
+        except (ValueError, KeyError):
+            cultivo['dias_restantes'] = "Fecha no válida"
+            
+    return jsonify(cultivos)
+
+
+# --- INICIO DEL SERVIDOR ---
+if __name__ == '__main__':
+    # Ejecuta el servidor en modo debug para desarrollo.
+    # Se ejecutará en http://127.0.0.1:5000/
+    print("Iniciando servidor Flask...")
+    app.run(debug=True)
+Asistente de programación
+¡Excelente! Pasar al Desarrollo Web con Flask es el siguiente gran hito. Esto te dará la flexibilidad de acceder y, potencialmente, modificar tus datos de cultivos desde cualquier dispositivo a través de un navegador web, moviéndote de una aplicación puramente local a una solución cliente-servidor.
+
+Vamos a empezar con el backend.
+
+🚀 Fase 1: Configuración del Backend (Flask)
+El plan es crear un archivo app_backend.py que correrá el servidor, leerá cultivos.json y lo expondrá a través de una API REST simple.
+
+1. Requisito Adicional
+Si aún no lo tienes instalado, abre tu terminal o entorno virtual y ejecuta:
+
+Bash
+pip install flask
+2. Código del Servidor Flask (app_backend.py)
+Crea un nuevo archivo en la misma carpeta que cultivos.py y cultivos.json llamado app_backend.py.
+
+Este código inicia un servidor muy básico y tiene una ruta principal para obtener todos los datos de cultivos.
+
+Python
+# app_backend.py
+
+from flask import Flask, jsonify, request
+import json
+import os
+from datetime import datetime
+
+# --- CONFIGURACIÓN ---
+NOMBRE_ARCHIVO_CULTIVOS = "cultivos.json"
+
+# Inicialización de la aplicación Flask
+app = Flask(__name__)
+
+# Función para cargar los datos del JSON
+def cargar_datos_cultivos():
+    """Lee el archivo JSON de cultivos. Si no existe, devuelve una lista vacía."""
+    if not os.path.exists(NOMBRE_ARCHIVO_CULTIVOS):
+        return []
+    try:
+        with open(NOMBRE_ARCHIVO_CULTIVOS, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error al cargar datos JSON: {e}")
+        return []
+
+# --- RUTAS DE LA API (Endpoints) ---
+
+@app.route('/', methods=['GET'])
+def index():
+    """Ruta de bienvenida/prueba."""
+    return jsonify({
+        "status": "ok",
+        "mensaje": "Servidor de Asistente de Cultivos (API) activo.",
+        "endpoints_disponibles": {
+            "/api/v1/cultivos": "GET (Obtiene todos los cultivos)"
+        }
+    })
+
+
+@app.route('/api/v1/cultivos', methods=['GET'])
+def obtener_cultivos():
+    """
+    Endpoint para obtener la lista completa de cultivos.
+    """
+    cultivos = cargar_datos_cultivos()
+    
+    # Opcional: Añadir un campo "dias_restantes" dinámico a cada cultivo antes de enviarlo.
+    hoy = datetime.now().date()
+    
+    for cultivo in cultivos:
+        try:
+            fecha_cosecha = datetime.strptime(cultivo["fecha_cosecha"], '%Y-%m-%d').date()
+            dias_restantes = (fecha_cosecha - hoy).days
+            
+            # Formateamos el resultado de forma más amigable
+            if dias_restantes < 0:
+                cultivo['dias_restantes'] = f"Cosechado hace {abs(dias_restantes)} días"
+            elif dias_restantes == 0:
+                cultivo['dias_restantes'] = "¡COSECHA HOY!"
+            else:
+                cultivo['dias_restantes'] = f"{dias_restantes} días"
+                
+        except (ValueError, KeyError):
+            cultivo['dias_restantes'] = "Fecha no válida"
+            
+    return jsonify(cultivos)
+
+
+# --- INICIO DEL SERVIDOR ---
+if __name__ == '__main__':
+    # Ejecuta el servidor en modo debug para desarrollo.
+    # Se ejecutará en http://127.0.0.1:5000/
+    print("Iniciando servidor Flask...")
+    app.run(debug=True)
+3. Instrucciones de Implementación
+Guarda el Archivo: Asegúrate de guardar el código anterior como app_backend.py en la misma carpeta que cultivos.py.
+
+Inicia el Servidor: Abre tu terminal, navega a la carpeta donde guardaste el archivo y ejecuta:
+
+python app_backend.py
+
+Verás un mensaje similar a: Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+
+Prueba la API:
+
+Abre tu navegador (o una herramienta como Postman) y visita: http://127.0.0.1:5000/
+
+Visita la ruta de datos: http://127.0.0.1:5000/api/v1/cultivos
+Deberías ver tus datos de cultivos.json directamente en el navegador, incluyendo el campo dinámico dias_restantes que calculamos en el servidor.
+
+Ahora que el servidor está corriendo y sirviendo tus datos, el siguiente paso lógico es implementar una ruta que te permita agregar nuevos cultivos a través de la web (peticiones POST).
+
+Modificaciones en app_backend.py (Ruta POST)
+Añade las siguientes funciones y la ruta a tu archivo app_backend.py.
+
+1. Nueva Función para Guardar Datos
+Inserta la siguiente función justo después de la función cargar_datos_cultivos:
+
+# app_backend.py (cerca de la línea 20)
+
+# ... (Función cargar_datos_cultivos)
+
+def guardar_datos_cultivos(cultivos_lista):
+    """Escribe la lista de cultivos actualizada en el archivo JSON."""
+    try:
+        with open(NOMBRE_ARCHIVO_CULTIVOS, "w") as f:
+            # Usamos indent=4 para que el JSON sea legible, como lo hacía la app de escritorio
+            json.dump(cultivos_lista, f, indent=4)
+        return True
+    except Exception as e:
+        print(f"Error al guardar datos JSON: {e}")
+        return False
+
+# ...
+2. Nueva Ruta POST para Agregar Cultivos
+Añade esta nueva ruta dentro de la sección de RUTAS DE LA API
+
+# app_backend.py (cerca de la línea 60)
+
+# ... (Función obtener_cultivos)
+
+@app.route('/api/v1/cultivos', methods=['POST'])
+def agregar_cultivo():
+    """
+    Endpoint para agregar un nuevo cultivo a la base de datos.
+    Requiere un objeto JSON con los campos necesarios.
+    """
+    if not request.json:
+        return jsonify({"error": "Falta el cuerpo de la petición (JSON)."}), 400
+
+    datos_cultivo = request.json
+    
+    # 1. Validación Básica de Campos Requeridos
+    campos_requeridos = ["nombre", "fecha_siembra", "fecha_cosecha"]
+    for campo in campos_requeridos:
+        if campo not in datos_cultivo:
+            return jsonify({"error": f"Falta el campo requerido: {campo}"}), 400
+            
+    # 2. Convertir y validar fechas
+    try:
+        # Verifica que el formato de fecha sea YYYY-MM-DD
+        datetime.strptime(datos_cultivo["fecha_siembra"], '%Y-%m-%d')
+        datetime.strptime(datos_cultivo["fecha_cosecha"], '%Y-%m-%d')
+    except ValueError:
+        return jsonify({"error": "Formato de fecha inválido. Use YYYY-MM-DD."}), 400
+
+    # 3. Preparar el nuevo objeto (Asegurar que todos los campos existan con valores predeterminados si faltan)
+    nuevo_cultivo = {
+        "nombre": datos_cultivo["nombre"],
+        "fecha_siembra": datos_cultivo["fecha_siembra"],
+        "fecha_cosecha": datos_cultivo["fecha_cosecha"],
+        "notas": datos_cultivo.get("notas", ""),
+        "zona": datos_cultivo.get("zona", ""),
+        # Asegurar que los valores numéricos son float/int
+        "precio_compra": float(datos_cultivo.get("precio_compra", 0.0)),
+        "precio_venta": float(datos_cultivo.get("precio_venta", 0.0)),
+        "dias_alerta": int(datos_cultivo.get("dias_alerta", 0))
+    }
+    
+    # 4. Cargar, Añadir y Guardar
+    cultivos = cargar_datos_cultivos()
+    cultivos.append(nuevo_cultivo)
+    
+    if guardar_datos_cultivos(cultivos):
+        return jsonify({
+            "status": "success",
+            "mensaje": f"Cultivo '{nuevo_cultivo['nombre']}' añadido correctamente.",
+            "cultivo_agregado": nuevo_cultivo
+        }), 201  # Código 201 Created
+    else:
+        return jsonify({"error": "Error interno del servidor al guardar el archivo."}), 500
+
+. Prueba de Implementación (POST)
+Ahora que tienes la ruta POST, puedes probarla usando una herramienta como Postman, la extensión Thunder Client en VS Code, o incluso la línea de comandos con curl.
+
+Ejemplo de Petición JSON (Cuerpo de la Petición):
+
+{
+    "nombre": "Cebolla Morada",
+    "fecha_siembra": "2025-11-05",
+    "fecha_cosecha": "2026-03-20",
+    "zona": "Zona D",
+    "precio_compra": 150.50,
+    "precio_venta": 420.00,
+    "dias_alerta": 10
+}
+
+Reinicia el servidor Flask (presiona Ctrl+C y luego python app_backend.py).
+
+Envía una petición POST a http://127.0.0.1:5000/api/v1/cultivos con el JSON de ejemplo.
+
+Verifica que el archivo cultivos.json se ha actualizado con el nuevo cultivo.
+
+Una vez que hayas verificado que puedes agregar datos de forma remota, podemos continuar con las funcionalidades CRUD (Crear, Leer, Actualizar, Eliminar).
+
+
+
+
+
+
 
 
 
