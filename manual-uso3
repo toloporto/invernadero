@@ -1060,6 +1060,303 @@ El backend ya está completo con la API RESTful. Ahora, el siguiente y último p
 
 ¿Estás listo para crear la interfaz de usuario web (Frontend) (HTML, CSS y JavaScript) que se conectará a esta API?
 
+Asistente de programación
+¡Absolutamente! Estoy listo para empezar con el Frontend.
+
+La interfaz web simple la construiremos con tres archivos esenciales, todos en la misma carpeta:
+
+index.html: La estructura base de la página.
+
+styles.css: El estilo visual (usaremos un tema oscuro simple).
+
+scripts.js: La lógica para interactuar con la API (peticiones GET, POST, PUT, DELETE).
+
+🚀 Fase 2: Desarrollo del Frontend Web
+Vamos a empezar con la estructura de la página.
+
+1. Creación del Archivo HTML (index.html)
+Crea un archivo llamado index.html en la misma carpeta que tus archivos Python.
+
+Este HTML definirá la tabla para mostrar los cultivos y el formulario para añadir/editar uno nuevo.
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Cultivos (Web API)</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <header>
+        <h1>🌱 Gestor de Cultivos API</h1>
+    </header>
+
+    <main>
+        <section class="card" id="form-section">
+            <h2>✏️ Añadir / Editar Cultivo</h2>
+            <form id="cultivoForm">
+                <input type="hidden" id="cultivoNombreOriginal" value="">
+                
+                <label for="nombre">Nombre:</label>
+                <input type="text" id="nombre" required>
+
+                <label for="zona">Zona:</label>
+                <input type="text" id="zona">
+
+                <label for="fecha_siembra">Fecha Siembra:</label>
+                <input type="date" id="fecha_siembra" required>
+
+                <label for="fecha_cosecha">Fecha Cosecha:</label>
+                <input type="date" id="fecha_cosecha" required>
+
+                <div class="split">
+                    <div>
+                        <label for="precio_compra">Costo (€):</label>
+                        <input type="number" id="precio_compra" step="0.01" value="0.00">
+                    </div>
+                    <div>
+                        <label for="precio_venta">Venta Est. (€):</label>
+                        <input type="number" id="precio_venta" step="0.01" value="0.00">
+                    </div>
+                </div>
+                
+                <label for="dias_alerta">Días de Alerta (Previos a Cosecha):</label>
+                <input type="number" id="dias_alerta" value="7">
+
+                <label for="notas">Notas:</label>
+                <textarea id="notas"></textarea>
+
+                <button type="submit" id="submitButton">Añadir Cultivo</button>
+            </form>
+        </section>
+
+        <section class="card" id="list-section">
+            <h2>🗓 Mis Cultivos</h2>
+            <p id="loading-message">Cargando datos de la API...</p>
+
+            <table id="cultivoTable">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Zona</th>
+                        <th>Siembra</th>
+                        <th>Cosecha</th>
+                        <th>Faltan</th>
+                        <th>Margen Est.</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cultivoList">
+                    </tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Asistente de Cultivos Web API</p>
+    </footer>
+
+    <script src="scripts.js"></script>
+</body>
+</html>
+
+2. Creación del Archivo CSS (styles.css)
+Crea un archivo llamado styles.css para darle un tema oscuro a la aplicación.
+
+/* styles.css */
+
+:root {
+    --color-dark-bg: #1e1e1e;
+    --color-card-bg: #2d2d2d;
+    --color-text: #f0f0f0;
+    --color-primary: #5cb85c; /* Verde */
+    --color-secondary: #007bff; /* Azul */
+    --color-danger: #dc3545; /* Rojo */
+    --color-alert: #ffc107; /* Amarillo */
+}
+
+/* Estilos Generales */
+body {
+    font-family: Arial, sans-serif;
+    background-color: var(--color-dark-bg);
+    color: var(--color-text);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+header {
+    background-color: var(--color-card-bg);
+    width: 100%;
+    text-align: center;
+    padding: 20px 0;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+h1 {
+    color: var(--color-primary);
+    margin: 0;
+}
+
+main {
+    display: flex;
+    gap: 20px;
+    max-width: 1200px;
+    width: 90%;
+    padding-bottom: 40px;
+}
+
+/* Estilos de las Tarjetas (Card) */
+.card {
+    background-color: var(--color-card-bg);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    flex-grow: 1;
+}
+
+#form-section {
+    flex-basis: 300px;
+    flex-shrink: 0;
+}
+
+#list-section {
+    flex-basis: 70%;
+    overflow-x: auto;
+}
+
+h2 {
+    color: var(--color-secondary);
+    border-bottom: 2px solid var(--color-card-bg);
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+/* Estilos del Formulario */
+form label {
+    display: block;
+    margin-top: 10px;
+    font-size: 0.9em;
+}
+
+form input[type="text"],
+form input[type="date"],
+form input[type="number"],
+form textarea {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    box-sizing: border-box;
+    border: 1px solid #444;
+    background-color: #383838;
+    color: var(--color-text);
+    border-radius: 4px;
+}
+
+.split {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.split > div {
+    flex-basis: 50%;
+}
+
+button {
+    background-color: var(--color-primary);
+    color: var(--color-text);
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: background-color 0.3s;
+    font-weight: bold;
+}
+
+button:hover {
+    background-color: #4CAF50;
+}
+
+/* Estilos de la Tabla */
+#cultivoTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+#cultivoTable th, #cultivoTable td {
+    border: 1px solid #444;
+    padding: 10px;
+    text-align: left;
+    white-space: nowrap; /* Evita que el texto de la tabla se rompa */
+}
+
+#cultivoTable th {
+    background-color: #495057;
+    color: var(--color-text);
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Clases de color para el estado de la cosecha */
+.cosecha-pasada {
+    background-color: #444;
+    color: #aaa;
+}
+.cosecha-hoy {
+    background-color: var(--color-alert);
+    color: var(--color-dark-bg);
+    font-weight: bold;
+}
+.cosecha-futura {
+    background-color: #383838;
+}
+
+/* Botones de acción dentro de la tabla */
+.action-buttons button {
+    margin: 0 5px;
+    padding: 5px 8px;
+    font-size: 0.8em;
+    margin-top: 0;
+}
+
+.edit-btn {
+    background-color: var(--color-secondary);
+}
+.delete-btn {
+    background-color: var(--color-danger);
+}
+.edit-btn:hover {
+    background-color: #0056b3;
+}
+.delete-btn:hover {
+    background-color: #c82333;
+}
+
+/* Footer */
+footer {
+    width: 100%;
+    text-align: center;
+    padding: 10px 0;
+    background-color: var(--color-card-bg);
+    color: #888;
+    margin-top: auto; /* Empuja el footer hacia abajo */
+}
+
+. Siguiente Paso
+Con la estructura (HTML) y el estilo (CSS) listos, el paso crítico es implementar la lógica de comunicación con el servidor.
+
+¿Estás listo para crear el archivo scripts.js con las funciones para GET, POST, PUT y DELETE?
+
+
+
+
 
 
 
