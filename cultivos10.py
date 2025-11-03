@@ -9,7 +9,7 @@ from tkinter import ttk, messagebox, filedialog
 # Módulo para el calendario
 from tkcalendar import Calendar 
 
-# --- IMPORTS PARA ANÁLISIS DE DATOS (NUEVOS) ---
+# --- IMPORTS PARA ANÁLISIS DE DATOS ---
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -105,8 +105,8 @@ class AppCultivos(tk.Tk):
     """Clase principal de la aplicación GUI con Tema Oscuro."""
     def __init__(self):
         super().__init__()
-        self.title("Asistente de Cultivos (v15.0 - Análisis Integrado)")
-        self.geometry("1050x700") # Un poco más ancho para los nuevos botones
+        self.title("Asistente de Cultivos (v15.1 - Análisis Temporal)")
+        self.geometry("1050x700") 
         
         self.cultivo_seleccionado_indice = None
         
@@ -253,7 +253,7 @@ class AppCultivos(tk.Tk):
         frame_mostrar = ttk.LabelFrame(self, text="🗓 Mis Cultivos", padding="10")
         frame_mostrar.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
         
-        # Panel de Resumen Financiero (igual que la versión anterior)
+        # Panel de Resumen Financiero 
         frame_totales = ttk.LabelFrame(frame_mostrar, text="💸 Resumen Financiero Potencial", padding="5")
         frame_totales.pack(fill='x', pady=5)
         
@@ -273,14 +273,13 @@ class AppCultivos(tk.Tk):
         self.label_margen_total = ttk.Label(frame_totales, text="€0.00", font=('Helvetica', 10, 'bold'))
         self.label_margen_total.grid(row=1, column=2, sticky='w')
 
-        # Recordatorio y Treeview (igual que la versión anterior)
+        # Recordatorio y Treeview 
         self.recordatorio_label = ttk.Label(frame_mostrar, text="Recordatorios aparecerán aquí.", font=('Helvetica', 12, 'bold'), style='Alerta.TLabel')
         self.recordatorio_label.pack(fill='x', pady=5)
         
         frame_mostrar.rowconfigure(2, weight=1) 
         
         self.lista_tree = ttk.Treeview(frame_mostrar, columns=('zona', 'siembra', 'cosecha', 'notas', 'compra', 'venta', 'margen', 'faltan'), show='headings')
-        # ... (configuración de Treeview columns)
         self.lista_tree.heading('#0', text='Cultivo')
         self.lista_tree.heading('zona', text='Zona') 
         self.lista_tree.heading('siembra', text='Siembra')
@@ -301,15 +300,15 @@ class AppCultivos(tk.Tk):
         self.lista_tree.column('faltan', width=100, anchor='center')
         self.lista_tree.pack(fill='both', expand=True, pady=10)
 
-        # Botones de lista (Ajuste de layout para incluir el botón de análisis)
+        # Botones de lista (Incluye Exportar y Analizar)
         frame_botones_lista = ttk.Frame(frame_mostrar, style='TLabel') 
         frame_botones_lista.pack(fill='x', pady=5)
         
-        # Botón para Lanzar el Análisis Externo (NUEVO)
+        # Botón para Lanzar el Análisis Externo
         ttk.Button(frame_botones_lista, text="📈 Analizar Ventas Externas", 
                    command=self.analizar_ventas_externas, style='Principal.TButton').pack(side='left', expand=True, fill='x', padx=5)
         
-        # Botón de Exportar (Existente)
+        # Botón de Exportar 
         ttk.Button(frame_botones_lista, text="📤 Exportar Cultivos CSV", 
                    command=self.exportar_a_csv, style='Principal.TButton').pack(side='left', expand=True, fill='x', padx=5)
 
@@ -320,11 +319,7 @@ class AppCultivos(tk.Tk):
 
     # --- 4. FUNCIONES CONECTADAS A LA INTERFAZ ---
     
-    # ... (calcular_totales_financieros, calcular_tiempo_restante, mostrar_calendario,
-    #      manejar_agregar_o_editar, manejar_editar_cultivo, manejar_eliminar_cultivo)
-    
     def calcular_totales_financieros(self):
-        """Calcula el costo total y la venta potencial total de todos los cultivos activos."""
         total_compra = 0.0
         total_venta = 0.0
         for cultivo in lista_cultivos:
@@ -333,7 +328,6 @@ class AppCultivos(tk.Tk):
         return total_compra, total_venta
 
     def calcular_tiempo_restante(self, fecha_objetivo):
-        """Calcula el tiempo restante entre hoy y la fecha de cosecha."""
         hoy = datetime.date.today()
         if fecha_objetivo < hoy:
             dias = (hoy - fecha_objetivo).days
@@ -345,7 +339,6 @@ class AppCultivos(tk.Tk):
             return f"{dias} Días Restantes"
 
     def mostrar_calendario(self, campo_destino):
-        """Abre una nueva ventana con el widget de calendario."""
         def set_fecha():
             fecha_str = cal.get_date() 
             fecha_obj = datetime.datetime.strptime(fecha_str, '%m/%d/%y').date()
@@ -485,7 +478,8 @@ class AppCultivos(tk.Tk):
 
     def analizar_ventas_externas(self):
         """
-        Carga el archivo CSV externo, calcula métricas financieras y genera un gráfico.
+        Carga el archivo CSV externo, calcula métricas financieras, genera un gráfico de barras 
+        (Ventas por Producto) y un gráfico de líneas (Tendencia Temporal).
         """
         nombre_archivo = NOMBRE_ARCHIVO_VENTAS
         
@@ -516,31 +510,51 @@ class AppCultivos(tk.Tk):
         # 3. Análisis Agrupado (Ventas por Producto)
         ventas_por_producto = df.groupby('Producto')['Venta_Total'].sum().sort_values(ascending=False)
         
-        # 4. Visualización de Datos
+        # 4. Análisis Agrupado Temporal (Ventas por Mes)
+        mapa_meses = {'Ene': 1, 'Feb': 2, 'Mar': 3, 'Abr': 4, 'May': 5, 'Jun': 6, 
+                      'Jul': 7, 'Ago': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dic': 12}
+        df['Num_Mes'] = df['Mes'].map(mapa_meses)
+        ventas_por_mes = df.groupby(['Num_Mes', 'Mes'])['Venta_Total'].sum().reset_index(level=1).sort_values(by='Num_Mes')
+        
+        print("\n--- REPORTE DE VENTAS POR MES ---")
+        print(ventas_por_mes[['Mes', 'Venta_Total']].to_string(index=False))
+
+        
+        # 5. VISUALIZACIÓN DE DATOS con Matplotlib
         try:
-            plt.figure(figsize=(10, 6))
-            
-            # Usar estilo oscuro para que el gráfico sea visualmente coherente
             plt.style.use('dark_background') 
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+            fig.suptitle('Análisis de Ventas Externas (Producto y Temporal)', color='white', fontsize=16)
+
+            # Gráfico 1: Ventas por Producto (Barras)
+            ventas_por_producto.plot(kind='bar', color='#1E8449', ax=ax1) 
+            ax1.set_title('Ventas Totales por Tipo de Producto', color='white')
+            ax1.set_xlabel('Producto', color='white')
+            ax1.set_ylabel('Venta Total (€)', color='white')
+            ax1.tick_params(axis='x', rotation=45, colors='white')
+            ax1.tick_params(axis='y', colors='white')
+            ax1.grid(axis='y', linestyle='--', alpha=0.4) 
             
-            ventas_por_producto.plot(kind='bar', color='#1E8449') 
+            # Gráfico 2: Ventas por Mes (Líneas) 
+            ax2.plot(ventas_por_mes['Mes'], ventas_por_mes['Venta_Total'], 
+                     marker='o', linestyle='-', color='#007BFF', linewidth=3)
+            ax2.set_title('Tendencia de Ventas a lo Largo del Tiempo', color='white')
+            ax2.set_xlabel('Mes', color='white')
+            ax2.set_ylabel('Venta Total (€)', color='white')
+            ax2.tick_params(axis='x', rotation=0, colors='white')
+            ax2.tick_params(axis='y', colors='white')
+            ax2.grid(axis='both', linestyle='--', alpha=0.4) 
             
-            plt.title('Ventas Totales por Tipo de Producto (Análisis Externo)', fontsize=14, fontweight='bold', color='white')
-            plt.xlabel('Producto', fontsize=12, color='white')
-            plt.ylabel('Venta Total (€)', fontsize=12, color='white')
-            plt.xticks(rotation=45, ha='right', color='white')
-            plt.yticks(color='white')
-            plt.grid(axis='y', linestyle='--', alpha=0.4) 
-            plt.tight_layout()
-            
-            plt.show() # Muestra la ventana del gráfico
+            plt.tight_layout(rect=[0, 0.03, 1, 0.95]) 
+            messagebox.showinfo("Análisis Completo", "Se han generado dos gráficos de análisis: por Producto y Temporal.")
+            plt.show() 
 
         except Exception as e:
             messagebox.showerror("Error de Gráfico", f"No se pudo generar el gráfico: {e}")
 
 
     def actualizar_lista_cultivos(self):
-        # ... (código para actualizar lista Treeview)
+        # ... (método para actualizar lista Treeview)
         for item in self.lista_tree.get_children():
             self.lista_tree.delete(item)
             
@@ -566,7 +580,6 @@ class AppCultivos(tk.Tk):
                                            tiempo_restante),
                                    tags=(tag,))
 
-        # 3. Actualizar Reporte Financiero Global
         total_compra, total_venta = self.calcular_totales_financieros()
         total_margen = total_venta - total_compra
         self.label_costo_total.config(text=f"€{total_compra:.2f}")
@@ -582,7 +595,7 @@ class AppCultivos(tk.Tk):
 
 
     def revisar_cosechas_al_inicio(self):
-        """Revisa y muestra una alerta si hay cultivos listos hoy."""
+        # ... (método para revisar cosechas)
         hoy = datetime.date.today()
         cosechas_listas = []
         for cultivo in lista_cultivos:
@@ -600,3 +613,9 @@ class AppCultivos(tk.Tk):
 if __name__ == "__main__":
     app = AppCultivos()
     app.mainloop()
+
+  
+
+        
+
+     
