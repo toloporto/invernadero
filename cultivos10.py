@@ -12,6 +12,8 @@ from tkcalendar import Calendar
 # --- IMPORTS PARA ANÁLISIS DE DATOS ---
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression # Nuevo para la predicción
+import numpy as np # Necesario para la manipulación de arrays en scikit-learn
 
 # --- CONFIGURACIÓN DE DATOS PERMANENTES ---
 lista_cultivos = []
@@ -105,7 +107,7 @@ class AppCultivos(tk.Tk):
     """Clase principal de la aplicación GUI con Tema Oscuro."""
     def __init__(self):
         super().__init__()
-        self.title("Asistente de Cultivos (v16.0 - Análisis Completo)")
+        self.title("Asistente de Cultivos (v17.0 - Predicción Integrada)")
         self.geometry("1050x700") 
         
         self.cultivo_seleccionado_indice = None
@@ -211,7 +213,7 @@ class AppCultivos(tk.Tk):
         self.compra_var = tk.StringVar()
         self.venta_var = tk.StringVar()
 
-        # Nombre, Zona, Fechas, Precios, Notas (igual que la versión anterior)
+        # Nombre, Zona, Fechas, Precios, Notas 
         ttk.Label(frame_agregar, text="Nombre:").pack(fill='x', pady=2)
         ttk.Entry(frame_agregar, textvariable=self.nombre_var).pack(fill='x', pady=1)
 
@@ -478,8 +480,8 @@ class AppCultivos(tk.Tk):
 
     def analizar_ventas_externas(self):
         """
-        Carga el archivo CSV externo, calcula métricas financieras, y genera tres gráficos:
-        Ventas por Producto, Tendencia Temporal, y Ventas por Región.
+        Carga el archivo CSV externo, realiza análisis descriptivo, y genera 
+        tres gráficos: Producto, Tendencia Temporal (con Predicción), y Región.
         """
         nombre_archivo = NOMBRE_ARCHIVO_VENTAS
         
@@ -510,25 +512,58 @@ class AppCultivos(tk.Tk):
         # 3. Análisis Agrupado (Ventas por Producto)
         ventas_por_producto = df.groupby('Producto')['Venta_Total'].sum().sort_values(ascending=False)
         
-        # 4. Análisis Agrupado Temporal (Ventas por Mes)
+        # 4. Análisis Temporal (Preparación para Regresión)
         mapa_meses = {'Ene': 1, 'Feb': 2, 'Mar': 3, 'Abr': 4, 'May': 5, 'Jun': 6, 
                       'Jul': 7, 'Ago': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dic': 12}
         df['Num_Mes'] = df['Mes'].map(mapa_meses)
-        ventas_por_mes = df.groupby(['Num_Mes', 'Mes'])['Venta_Total'].sum().reset_index(level=1).sort_values(by='Num_Mes')
+        ventas_por_mes_df = df.groupby(['Num_Mes', 'Mes'])['Venta_Total'].sum().reset_index()
+        ventas_por_mes_df = ventas_por_mes_df.sort_values(by='Num_Mes').reset_index(drop=True)
         
-        # 5. Análisis Agrupado por Región (NUEVO)
+        # 5. Análisis Agrupado por Región
         ventas_por_region = df.groupby('Region')['Venta_Total'].sum().sort_values(ascending=False)
         
-        print("\n--- REPORTE DE VENTAS POR REGIÓN ---")
-        print(ventas_por_region.to_string())
-
         
-        # 6. VISUALIZACIÓN DE DATOS con Matplotlib (Tres Subplots)
+        # --- 6. PREDICCIÓN DE VENTAS (REGRESIÓN LINEAL) ---
+        
+        # Preparamos los datos para el modelo X (Meses) y Y (Ventas)
+        X = ventas_por_mes_df['Num_Mes'].values.reshape(-1, 1) 
+        Y = ventas_por_mes_df['Venta_Total'].values
+        
+        # Creamos y entrenamos el modelo
+        modelo_regresion = LinearRegression()
+        modelo_regresion.fit(X, Y)
+        
+        # Hacemos una predicción para el siguiente mes
+        ultimo_mes_num = ventas_por_mes_df['Num_Mes'].max()
+        mes_futuro_num = ultimo_mes_num + 1
+        
+        # Calculamos el nombre del mes futuro para la visualización (Ej: Abr -> May)
+        meses_lista = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+        # Usamos el operador % para volver a Enero si pasamos de Diciembre (ciclo anual)
+        mes_futuro_nombre = meses_lista[(mes_futuro_num - 1) % 12] 
+        if mes_futuro_num > 12: # Si el mes futuro pasa de Diciembre, ajustamos el nombre para que no se repita si hay datos de más de 12 meses.
+             mes_futuro_nombre = f"Mes {mes_futuro_num}" 
+
+        # Predecimos la venta para ese mes
+        prediccion_futura = modelo_regresion.predict(np.array([[mes_futuro_num]]))[0]
+        
+        print("\n--- PREDICCIÓN DE VENTAS ---")
+        print(f"Predicción de venta para {mes_futuro_nombre}: €{prediccion_futura:.2f}")
+
+        # Añadimos la predicción al DataFrame temporal para el gráfico
+        X_pred = np.append(X, [[mes_futuro_num]], axis=0) # Incluimos el mes futuro
+        Y_tendencia = modelo_regresion.predict(X_pred)     # Calculamos toda la línea de tendencia
+        
+        # Preparamos las etiquetas del eje X para el gráfico
+        labels_x = ventas_por_mes_df['Mes'].tolist() + [f"Pred. {mes_futuro_nombre}"]
+        
+        
+        # --- 7. VISUALIZACIÓN DE DATOS con Matplotlib (Tres Subplots) ---
         try:
             plt.style.use('dark_background') 
             # Configuración de 1 fila y 3 columnas
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
-            fig.suptitle('Análisis Detallado de Ventas Externas (Producto, Temporal y Región)', color='white', fontsize=16)
+            fig.suptitle(f'Análisis de Ventas (Predicción {mes_futuro_nombre}: €{prediccion_futura:.2f})', color='white', fontsize=16)
 
             
             # --- Gráfico 1: Ventas por Producto (Barras) ---
@@ -540,15 +575,21 @@ class AppCultivos(tk.Tk):
             ax1.tick_params(axis='y', colors='white')
             ax1.grid(axis='y', linestyle='--', alpha=0.4) 
             
-            # --- Gráfico 2: Ventas por Mes (Líneas) ---
-            ax2.plot(ventas_por_mes['Mes'], ventas_por_mes['Venta_Total'], 
-                     marker='o', linestyle='-', color='#007BFF', linewidth=3)
-            ax2.set_title('2. Tendencia Temporal (Mes)', color='white')
+            # --- Gráfico 2: Ventas por Mes (Líneas con Predicción) ---
+            # Datos Históricos
+            ax2.plot(ventas_por_mes_df['Mes'], ventas_por_mes_df['Venta_Total'], 
+                     marker='o', linestyle='-', color='#007BFF', linewidth=3, label='Ventas Históricas')
+            # Línea de Tendencia y Predicción
+            ax2.plot(labels_x, Y_tendencia, 
+                     linestyle='--', color='#FFC107', linewidth=2, label='Predicción Lineal')
+                     
+            ax2.set_title('2. Tendencia Temporal y Predicción', color='white')
             ax2.set_xlabel('Mes', color='white')
             ax2.set_ylabel('Venta Total (€)', color='white')
-            ax2.tick_params(axis='x', rotation=0, colors='white')
+            ax2.tick_params(axis='x', rotation=45, colors='white')
             ax2.tick_params(axis='y', colors='white')
             ax2.grid(axis='both', linestyle='--', alpha=0.4) 
+            ax2.legend(loc='upper left', frameon=False) 
             
             # --- Gráfico 3: Ventas por Región (Barras) ---
             ventas_por_region.plot(kind='bar', color='#FFC107', ax=ax3) 
@@ -561,11 +602,11 @@ class AppCultivos(tk.Tk):
 
             
             plt.tight_layout(rect=[0, 0.03, 1, 0.95]) 
-            messagebox.showinfo("Análisis Completo", "Se han generado TRES gráficos de análisis: Producto, Temporal y Región.")
+            messagebox.showinfo("Análisis Completo", f"Se han generado tres gráficos, incluyendo una predicción para {mes_futuro_nombre}.")
             plt.show() 
 
         except Exception as e:
-            messagebox.showerror("Error de Gráfico", f"No se pudo generar el gráfico: {e}")
+            messagebox.showerror("Error de Gráfico/Predicción", f"No se pudo generar el gráfico o el modelo: {e}")
 
 
     def actualizar_lista_cultivos(self):
