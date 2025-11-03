@@ -1,0 +1,214 @@
+# Módulos estándar de Python
+import datetime
+import json
+import os
+# ¡NUEVO! Módulos para la Interfaz Gráfica de Usuario (GUI)
+import tkinter as tk
+from tkinter import ttk, messagebox # ttk son widgets con mejor estilo
+
+# --- CONFIGURACIÓN DE DATOS PERMANENTES ---
+lista_cultivos = []
+NOMBRE_ARCHIVO = "cultivos.json"
+
+# --- 1. CLASE MODELO (LA LÓGICA DE NEGOCIO) ---
+
+class Cultivo:
+    """Clase base para guardar la información de un cultivo."""
+    def __init__(self, nombre, fecha_siembra, fecha_cosecha):
+        self.nombre = nombre
+        self.fecha_siembra = fecha_siembra
+        self.fecha_cosecha = fecha_cosecha
+
+# --- 2. FUNCIONES DE MANEJO DE ARCHIVOS (ADAPTADAS) ---
+
+def validar_fecha(fecha_texto):
+    """Convierte texto a un objeto de fecha (YYYY-MM-DD)."""
+    try:
+        return datetime.datetime.strptime(fecha_texto, '%Y-%m-%d').date()
+    except ValueError:
+        return None
+
+def cargar_cultivos():
+    """Carga los cultivos desde el archivo JSON."""
+    global lista_cultivos
+    lista_cultivos = [] # Limpiamos antes de cargar
+    
+    if not os.path.exists(NOMBRE_ARCHIVO):
+        return
+    
+    try:
+        with open(NOMBRE_ARCHIVO, "r") as f:
+            datos_cargados = json.load(f)
+            for item in datos_cargados:
+                siembra = validar_fecha(item["fecha_siembra"])
+                cosecha = validar_fecha(item["fecha_cosecha"])
+                
+                if siembra and cosecha:
+                    nuevo = Cultivo(item["nombre"], siembra, cosecha)
+                    lista_cultivos.append(nuevo)
+                    
+    except Exception as e:
+        # En una GUI, es mejor avisar al usuario del error
+        messagebox.showerror("Error de Carga", f"Hubo un error al cargar el archivo: {e}")
+
+def guardar_cultivos():
+    """Guarda la lista de cultivos en el archivo JSON."""
+    datos_para_json = []
+    for cultivo in lista_cultivos:
+        cultivo_dict = {
+            "nombre": cultivo.nombre,
+            "fecha_siembra": cultivo.fecha_siembra.isoformat(),
+            "fecha_cosecha": cultivo.fecha_cosecha.isoformat()
+        }
+        datos_para_json.append(cultivo_dict)
+        
+    try:
+        with open(NOMBRE_ARCHIVO, "w") as f:
+            json.dump(datos_para_json, f, indent=4)
+    except Exception as e:
+        messagebox.showerror("Error de Guardado", f"No se pudo guardar la información: {e}")
+
+# --- 3. LA CLASE DE LA APLICACIÓN (TKINTER) ---
+
+class AppCultivos(tk.Tk):
+    """
+    Clase principal que hereda de tk.Tk (la ventana principal).
+    Aquí definimos la interfaz y la conectamos con la lógica.
+    """
+    def __init__(self):
+        super().__init__() # Inicializa la ventana principal
+        self.title("Asistente de Cultivos (GUI)")
+        self.geometry("800x600") # Tamaño inicial de la ventana
+        
+        cargar_cultivos() # Cargamos los datos guardados al iniciar
+        self.crear_widgets()
+        self.actualizar_lista_cultivos()
+        self.revisar_cosechas_al_inicio()
+
+    def crear_widgets(self):
+        """Define la disposición de todos los elementos de la interfaz."""
+        
+        # Configuramos el diseño (usamos 'grid' para una colocación flexible)
+        self.columnconfigure(0, weight=1) # Columna principal
+        self.columnconfigure(1, weight=3) # Columna de lista y recordatorios
+        self.rowconfigure(0, weight=1)
+        
+        # --- Marco Izquierdo (Para añadir un cultivo) ---
+        frame_agregar = ttk.LabelFrame(self, text="🌱 Añadir Cultivo", padding="10")
+        frame_agregar.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        
+        # Variables para capturar la entrada de texto
+        self.nombre_var = tk.StringVar()
+        self.siembra_var = tk.StringVar()
+        self.cosecha_var = tk.StringVar()
+        
+        # Etiqueta y campo para el Nombre
+        ttk.Label(frame_agregar, text="Nombre:").pack(fill='x', pady=5)
+        ttk.Entry(frame_agregar, textvariable=self.nombre_var).pack(fill='x', pady=2)
+        
+        # Etiqueta y campo para la Fecha de Siembra
+        ttk.Label(frame_agregar, text="Fecha Siembra (YYYY-MM-DD):").pack(fill='x', pady=5)
+        ttk.Entry(frame_agregar, textvariable=self.siembra_var).pack(fill='x', pady=2)
+        
+        # Etiqueta y campo para la Fecha de Cosecha
+        ttk.Label(frame_agregar, text="Fecha Cosecha (YYYY-MM-DD):").pack(fill='x', pady=5)
+        ttk.Entry(frame_agregar, textvariable=self.cosecha_var).pack(fill='x', pady=2)
+        
+        # Botón para añadir
+        ttk.Button(frame_agregar, text="Añadir a la Lista", command=self.manejar_agregar_cultivo).pack(fill='x', pady=15)
+
+        # --- Marco Derecho (Para la lista y recordatorios) ---
+        frame_mostrar = ttk.LabelFrame(self, text="🗓 Mis Cultivos", padding="10")
+        frame_mostrar.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        frame_mostrar.rowconfigure(1, weight=1) # La lista ocupará el espacio vertical
+
+        # Etiqueta para el recordatorio
+        self.recordatorio_label = ttk.Label(frame_mostrar, text="Recordatorios aparecerán aquí.", font=('Helvetica', 12, 'bold'))
+        self.recordatorio_label.pack(fill='x', pady=5)
+        
+        # Lista de cultivos (Treeview es mejor que Listbox para mostrar múltiples columnas)
+        self.lista_tree = ttk.Treeview(frame_mostrar, columns=('siembra', 'cosecha'), show='headings')
+        self.lista_tree.heading('siembra', text='Siembra')
+        self.lista_tree.heading('cosecha', text='Cosecha')
+        
+        self.lista_tree.column('#0', width=200, anchor='w') # Columna para el nombre
+        self.lista_tree.column('siembra', width=100, anchor='center')
+        self.lista_tree.column('cosecha', width=100, anchor='center')
+        
+        self.lista_tree.pack(fill='both', expand=True, pady=10)
+
+    # --- 4. FUNCIONES CONECTADAS A LA INTERFAZ ---
+    
+    def manejar_agregar_cultivo(self):
+        """Función que se ejecuta al pulsar 'Añadir a la Lista'."""
+        nombre = self.nombre_var.get().strip()
+        siembra_str = self.siembra_var.get().strip()
+        cosecha_str = self.cosecha_var.get().strip()
+
+        # 1. Validación de datos
+        if not nombre or not siembra_str or not cosecha_str:
+            messagebox.showerror("Error", "Todos los campos deben ser completados.")
+            return
+
+        fecha_siembra = validar_fecha(siembra_str)
+        fecha_cosecha = validar_fecha(cosecha_str)
+
+        if not fecha_siembra or not fecha_cosecha:
+            messagebox.showerror("Error", "Formato de fecha incorrecto. Use YYYY-MM-DD.")
+            return
+
+        if fecha_cosecha < fecha_siembra:
+            messagebox.showerror("Error", "La fecha de cosecha no puede ser anterior a la siembra.")
+            return
+
+        # 2. Creación y guardado
+        nuevo_cultivo = Cultivo(nombre, fecha_siembra, fecha_cosecha)
+        lista_cultivos.append(nuevo_cultivo)
+        guardar_cultivos()
+        
+        # 3. Actualizar la interfaz
+        self.actualizar_lista_cultivos()
+        self.revisar_cosechas_al_inicio()
+        
+        # 4. Limpiar los campos de entrada
+        self.nombre_var.set("")
+        self.siembra_var.set("")
+        self.cosecha_var.set("")
+        messagebox.showinfo("Éxito", f"'{nombre}' añadido y guardado correctamente.")
+
+    def actualizar_lista_cultivos(self):
+        """Refresca los datos mostrados en la lista Treeview."""
+        
+        # Borramos el contenido anterior de la lista
+        for item in self.lista_tree.get_children():
+            self.lista_tree.delete(item)
+            
+        # Insertamos los nuevos datos
+        for cultivo in lista_cultivos:
+            siembra_f = cultivo.fecha_siembra.strftime('%d-%m-%Y')
+            cosecha_f = cultivo.fecha_cosecha.strftime('%d-%m-%Y')
+            
+            # Insertamos el cultivo en la lista
+            self.lista_tree.insert('', tk.END, text=cultivo.nombre, values=(siembra_f, cosecha_f))
+
+    def revisar_cosechas_al_inicio(self):
+        """Revisa y muestra una alerta si hay cultivos listos hoy."""
+        hoy = datetime.date.today()
+        cosechas_listas = []
+        
+        for cultivo in lista_cultivos:
+            if cultivo.fecha_cosecha <= hoy:
+                cosechas_listas.append(cultivo.nombre)
+                
+        if cosechas_listas:
+            mensaje = "¡ATENCIÓN! Cosecha Pendiente:\n" + ", ".join(cosechas_listas)
+            self.recordatorio_label.config(text=mensaje, foreground='red') # Color rojo para la alerta
+            messagebox.showwarning("¡Recordatorio de Cosecha!", mensaje)
+        else:
+            self.recordatorio_label.config(text="Todo al día. Ninguna cosecha lista hoy.", foreground='green')
+
+
+# --- 5. INICIO DE LA APLICACIÓN ---
+if __name__ == "__main__":
+    app = AppCultivos()
+    app.mainloop() # Inicia el bucle de la aplicación para que se muestre la ventana
