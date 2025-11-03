@@ -1,39 +1,57 @@
-# ... (Módulos estándar de Python e imports de Tkinter/tkcalendar)
+# --- IMPORTS ---
+import datetime
+import json
+import os
+# Módulos para la Interfaz Gráfica de Usuario (GUI)
+import tkinter as tk
+from tkinter import ttk, messagebox
+# Módulo para el calendario
+from tkcalendar import Calendar 
+
+# --- CONFIGURACIÓN DE DATOS PERMANENTES ---
+lista_cultivos = []
+NOMBRE_ARCHIVO = "cultivos.json"
 
 # --- 1. CLASE MODELO (LA LÓGICA DE NEGOCIO) ---
 
 class Cultivo:
     """Clase base para guardar la información de un cultivo."""
-    def __init__(self, nombre, fecha_siembra, fecha_cosecha, notas=""): #! CAMBIO NOTAS: Nuevo argumento
+    def __init__(self, nombre, fecha_siembra, fecha_cosecha, notas=""):
         self.nombre = nombre
         self.fecha_siembra = fecha_siembra
         self.fecha_cosecha = fecha_cosecha
-        self.notas = notas #! CAMBIO NOTAS: Nuevo atributo
+        self.notas = notas
 
 # --- 2. FUNCIONES DE MANEJO DE ARCHIVOS Y DATOS ---
 
-# ... (validar_fecha se mantiene igual)
+def validar_fecha(fecha_texto):
+    """Convierte texto a un objeto de fecha (YYYY-MM-DD)."""
+    try:
+        return datetime.datetime.strptime(fecha_texto, '%Y-%m-%d').date()
+    except ValueError:
+        return None
 
 def cargar_cultivos():
     """Carga los cultivos desde el archivo JSON."""
     global lista_cultivos
-    lista_cultivos = [] 
-    # ... (cuerpo de la función)
+    lista_cultivos = []
+    
     if not os.path.exists(NOMBRE_ARCHIVO):
         return
+    
     try:
         with open(NOMBRE_ARCHIVO, "r") as f:
             datos_cargados = json.load(f)
             for item in datos_cargados:
                 siembra = validar_fecha(item["fecha_siembra"])
                 cosecha = validar_fecha(item["fecha_cosecha"])
-                # Aseguramos que 'notas' exista, si no, es cadena vacía (para compatibilidad con archivos viejos)
-                notas = item.get("notas", "") #! CAMBIO NOTAS: Leemos el campo 'notas'
+                # Leemos 'notas' o usamos "" si no existe (para archivos antiguos)
+                notas = item.get("notas", "")
                 
                 if siembra and cosecha:
-                    # ¡Pasamos el nuevo argumento 'notas'!
-                    nuevo = Cultivo(item["nombre"], siembra, cosecha, notas) #! CAMBIO NOTAS
+                    nuevo = Cultivo(item["nombre"], siembra, cosecha, notas)
                     lista_cultivos.append(nuevo)
+                    
     except Exception as e:
         messagebox.showerror("Error de Carga", f"Hubo un error al cargar el archivo: {e}")
 
@@ -45,11 +63,10 @@ def guardar_cultivos():
             "nombre": cultivo.nombre,
             "fecha_siembra": cultivo.fecha_siembra.isoformat(),
             "fecha_cosecha": cultivo.fecha_cosecha.isoformat(),
-            "notas": cultivo.notas #! CAMBIO NOTAS: Guardamos el campo 'notas'
+            "notas": cultivo.notas
         }
         datos_para_json.append(cultivo_dict)
         
-    # ... (Resto de la lógica de guardado)
     try:
         with open(NOMBRE_ARCHIVO, "w") as f:
             json.dump(datos_para_json, f, indent=4)
@@ -58,23 +75,37 @@ def guardar_cultivos():
 
 
 # --- 3. LA CLASE DE LA APLICACIÓN (TKINTER) ---
+
 class AppCultivos(tk.Tk):
-    # ... (__init__ igual)
-    
+    """Clase principal de la aplicación GUI."""
+    def __init__(self):
+        super().__init__()
+        self.title("Asistente de Cultivos (Completo con Notas)")
+        self.geometry("800x600") 
+        
+        self.cultivo_seleccionado_indice = None
+        
+        cargar_cultivos() 
+        self.crear_widgets()
+        self.actualizar_lista_cultivos()
+        self.revisar_cosechas_al_inicio()
+        
     def limpiar_campos(self):
-        """Función auxiliar para limpiar la interfaz. #! CAMBIO NOTAS"""
+        """Función auxiliar para limpiar la interfaz y salir del modo edición."""
         self.nombre_var.set("")
         self.siembra_display_var.set("Seleccionar fecha...")
         self.cosecha_display_var.set("Seleccionar fecha...")
-        self.notas_var.set("") #! CAMBIO NOTAS: Limpiamos el campo de notas
+        self.notas_var.set("") 
         self.fecha_siembra_obj = None
         self.fecha_cosecha_obj = None
+        # Restablecer modo Añadir
         self.btn_guardar.config(text="Añadir a la Lista")
-        self.cultivo_seleccionado_indice = None 
+        self.cultivo_seleccionado_indice = None
         
     def crear_widgets(self):
-        """Define la disposición de todos los elementos. #! CAMBIO NOTAS"""
-        # ... (Configuración de grid)
+        """Define la disposición de todos los elementos."""
+        
+        # Configuración del diseño
         self.columnconfigure(0, weight=1) 
         self.columnconfigure(1, weight=3) 
         self.rowconfigure(0, weight=1)
@@ -88,9 +119,8 @@ class AppCultivos(tk.Tk):
         self.cosecha_display_var = tk.StringVar(value="Seleccionar fecha...")
         self.fecha_siembra_obj = None
         self.fecha_cosecha_obj = None
-        self.notas_var = tk.StringVar() #! CAMBIO NOTAS: Variable para el campo de notas
+        self.notas_var = tk.StringVar()
         
-        # ... (Widgets para Nombre, Siembra, Cosecha - iguales)
         ttk.Label(frame_agregar, text="Nombre:").pack(fill='x', pady=5)
         ttk.Entry(frame_agregar, textvariable=self.nombre_var).pack(fill='x', pady=2)
         
@@ -104,7 +134,7 @@ class AppCultivos(tk.Tk):
         ttk.Button(frame_agregar, text="Elegir Fecha de Cosecha", 
                    command=lambda: self.mostrar_calendario("cosecha")).pack(fill='x', pady=5)
 
-        # #! CAMBIO NOTAS: Nuevo widget para notas
+        # Nuevo widget para notas
         ttk.Label(frame_agregar, text="Notas (Opcional):").pack(fill='x', pady=5)
         ttk.Entry(frame_agregar, textvariable=self.notas_var).pack(fill='x', pady=2)
         
@@ -120,23 +150,22 @@ class AppCultivos(tk.Tk):
         frame_mostrar.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
         frame_mostrar.rowconfigure(1, weight=1) 
 
-        # ... (recordatorio_label)
         self.recordatorio_label = ttk.Label(frame_mostrar, text="Recordatorios aparecerán aquí.", font=('Helvetica', 12, 'bold'))
         self.recordatorio_label.pack(fill='x', pady=5)
         
-        # #! CAMBIO NOTAS: Añadimos la columna 'notas' al Treeview
+        # Treeview con la nueva columna 'notas'
         self.lista_tree = ttk.Treeview(frame_mostrar, columns=('siembra', 'cosecha', 'notas'), show='headings')
         self.lista_tree.heading('siembra', text='Siembra')
         self.lista_tree.heading('cosecha', text='Cosecha')
-        self.lista_tree.heading('notas', text='Notas') #! CAMBIO NOTAS
+        self.lista_tree.heading('notas', text='Notas')
         
         self.lista_tree.column('#0', width=150, anchor='w')
         self.lista_tree.column('siembra', width=90, anchor='center')
         self.lista_tree.column('cosecha', width=90, anchor='center')
-        self.lista_tree.column('notas', width=150, anchor='w') #! CAMBIO NOTAS: Configuramos la nueva columna
+        self.lista_tree.column('notas', width=150, anchor='w')
         self.lista_tree.pack(fill='both', expand=True, pady=10)
 
-        # ... (Botones de Eliminar/Editar - iguales)
+        # Marco para los botones de lista
         frame_botones_lista = ttk.Frame(frame_mostrar)
         frame_botones_lista.pack(fill='x', pady=5)
         
@@ -148,14 +177,43 @@ class AppCultivos(tk.Tk):
 
     # --- 4. FUNCIONES CONECTADAS A LA INTERFAZ ---
 
+    def mostrar_calendario(self, campo_destino):
+        """Abre una nueva ventana con el widget de calendario."""
+        
+        def set_fecha():
+            fecha_str = cal.get_date() 
+            fecha_obj = datetime.datetime.strptime(fecha_str, '%m/%d/%y').date()
+            
+            if campo_destino == "siembra":
+                self.fecha_siembra_obj = fecha_obj
+                self.siembra_display_var.set(fecha_obj.strftime('%Y-%m-%d'))
+            elif campo_destino == "cosecha":
+                self.fecha_cosecha_obj = fecha_obj
+                self.cosecha_display_var.set(fecha_obj.strftime('%Y-%m-%d'))
+                
+            top.destroy()
+        
+        top = tk.Toplevel(self)
+        top.title(f"Seleccionar Fecha de {campo_destino.capitalize()}")
+        
+        cal = Calendar(top, 
+                       selectmode='day', 
+                       date_pattern='mm/dd/yy',
+                       year=datetime.date.today().year,
+                       month=datetime.date.today().month,
+                       day=datetime.date.today().day)
+        cal.pack(padx=10, pady=10)
+        
+        ttk.Button(top, text="Confirmar", command=set_fecha).pack(pady=10)
+        
     def manejar_agregar_o_editar(self):
-        """Función Única: Añade un nuevo cultivo O guarda los cambios. #! CAMBIO NOTAS"""
+        """Añade un nuevo cultivo O guarda los cambios del cultivo seleccionado."""
         nombre = self.nombre_var.get().strip()
         fecha_siembra = self.fecha_siembra_obj
         fecha_cosecha = self.fecha_cosecha_obj
-        notas = self.notas_var.get().strip() #! CAMBIO NOTAS: Obtenemos el valor de las notas
+        notas = self.notas_var.get().strip()
 
-        # 1. Validación (se mantiene igual)
+        # 1. Validación
         if not nombre or not fecha_siembra or not fecha_cosecha:
             messagebox.showerror("Error", "Debe completar el nombre y seleccionar ambas fechas.")
             return
@@ -165,40 +223,38 @@ class AppCultivos(tk.Tk):
 
         # 2. Lógica de Adición o Edición
         if self.cultivo_seleccionado_indice is None:
-            # --- MODO AÑADIR ---
-            # ¡Pasamos el nuevo argumento 'notas'!
-            nuevo_cultivo = Cultivo(nombre, fecha_siembra, fecha_cosecha, notas) #! CAMBIO NOTAS
+            # MODO AÑADIR
+            nuevo_cultivo = Cultivo(nombre, fecha_siembra, fecha_cosecha, notas)
             lista_cultivos.append(nuevo_cultivo)
             msg = f"'{nombre}' añadido con éxito."
         else:
-            # --- MODO EDITAR ---
+            # MODO EDITAR
             indice = self.cultivo_seleccionado_indice
             cultivo_a_editar = lista_cultivos[indice]
             
-            # Actualizamos las propiedades incluyendo 'notas'
+            # Actualizamos las propiedades
             cultivo_a_editar.nombre = nombre
             cultivo_a_editar.fecha_siembra = fecha_siembra
             cultivo_a_editar.fecha_cosecha = fecha_cosecha
-            cultivo_a_editar.notas = notas #! CAMBIO NOTAS: Actualizamos las notas
+            cultivo_a_editar.notas = notas
             msg = f"'{nombre}' actualizado con éxito."
             
         # 3. Guardar, actualizar y limpiar
         guardar_cultivos()
         self.actualizar_lista_cultivos()
         self.revisar_cosechas_al_inicio()
-        self.limpiar_campos() 
+        self.limpiar_campos()
         messagebox.showinfo("Éxito", msg)
 
 
     def manejar_editar_cultivo(self):
-        """Carga los datos del cultivo seleccionado en los campos de entrada. #! CAMBIO NOTAS"""
+        """Carga los datos del cultivo seleccionado en los campos de entrada."""
         seleccion_id = self.lista_tree.selection()
         
         if not seleccion_id:
             messagebox.showwarning("Advertencia", "Selecciona un cultivo para editar.")
             return
 
-        # Obtenemos el índice del elemento seleccionado
         try:
             indice = int(self.lista_tree.focus())
         except ValueError:
@@ -209,41 +265,85 @@ class AppCultivos(tk.Tk):
         cultivo_a_editar = lista_cultivos[indice]
         
         self.nombre_var.set(cultivo_a_editar.nombre)
-        self.notas_var.set(cultivo_a_editar.notas) #! CAMBIO NOTAS: Cargamos las notas
+        self.notas_var.set(cultivo_a_editar.notas)
         
-        # Cargar los objetos de fecha (igual)
+        # Cargar los objetos de fecha
         self.fecha_siembra_obj = cultivo_a_editar.fecha_siembra
         self.siembra_display_var.set(cultivo_a_editar.fecha_siembra.strftime('%Y-%m-%d'))
         self.fecha_cosecha_obj = cultivo_a_editar.fecha_cosecha
         self.cosecha_display_var.set(cultivo_a_editar.fecha_cosecha.strftime('%Y-%m-%d'))
         
-        # 2. Entrar en modo edición (igual)
-        self.cultivo_seleccionado_indice = indice 
+        # 2. Entrar en modo edición
+        self.cultivo_seleccionado_indice = indice
         self.btn_guardar.config(text=f"✏️ Guardar Cambios (Editando {cultivo_a_editar.nombre})")
         messagebox.showinfo("Modo Edición", f"Datos de '{cultivo_a_editar.nombre}' cargados. Haz tus cambios y pulsa 'Guardar Cambios'.")
 
 
-    def actualizar_lista_cultivos(self):
-        """Refresca los datos mostrados en la lista Treeview. #! CAMBIO NOTAS"""
+    def manejar_eliminar_cultivo(self):
+        """Función que elimina el cultivo seleccionado de la lista."""
         
-        # ... (Borrar contenido anterior - igual)
+        seleccion_id = self.lista_tree.selection()
+        if not seleccion_id:
+            messagebox.showwarning("Advertencia", "Por favor, selecciona un cultivo de la lista para eliminar.")
+            return
+
+        try:
+            indice_a_eliminar = int(self.lista_tree.focus()) 
+        except ValueError:
+            messagebox.showerror("Error", "Error al identificar el cultivo. Intenta seleccionar otra vez.")
+            return
+
+        nombre_cultivo = lista_cultivos[indice_a_eliminar].nombre
+        confirmar = messagebox.askyesno(
+            "Confirmar Eliminación",
+            f"¿Estás seguro de que quieres eliminar '{nombre_cultivo}' de tus cultivos?"
+        )
+
+        if confirmar:
+            del lista_cultivos[indice_a_eliminar] 
+            guardar_cultivos()
+            self.actualizar_lista_cultivos()
+            self.revisar_cosechas_al_inicio()
+            self.limpiar_campos() 
+            messagebox.showinfo("Éxito", f"El cultivo '{nombre_cultivo}' ha sido eliminado.")
+
+    def actualizar_lista_cultivos(self):
+        """Refresca los datos mostrados en la lista Treeview."""
+        
         for item in self.lista_tree.get_children():
             self.lista_tree.delete(item)
             
-        # Insertamos los nuevos datos
         for i, cultivo in enumerate(lista_cultivos):
             siembra_f = cultivo.fecha_siembra.strftime('%d-%m-%Y')
             cosecha_f = cultivo.fecha_cosecha.strftime('%d-%m-%Y')
             
-            # #! CAMBIO NOTAS: Insertamos el valor de notas
+            # Insertamos el valor de notas
             self.lista_tree.insert('', tk.END, iid=str(i), 
                                    text=cultivo.nombre, 
-                                   values=(siembra_f, cosecha_f, cultivo.notas)) #! CAMBIO NOTAS
+                                   values=(siembra_f, cosecha_f, cultivo.notas))
 
-    # ... (El resto de funciones como manejar_eliminar_cultivo, mostrar_calendario, revisar_cosechas_al_inicio se mantienen igual)
-    
-# --- 5. INICIO DE LA APLICACIÓN (Sin cambios) ---
+    def revisar_cosechas_al_inicio(self):
+        """Revisa y muestra una alerta si hay cultivos listos hoy."""
+        hoy = datetime.date.today()
+        cosechas_listas = []
+        
+        for cultivo in lista_cultivos:
+            if cultivo.fecha_cosecha <= hoy:
+                cosechas_listas.append(cultivo.nombre)
+                
+        if cosechas_listas:
+            mensaje = "¡ATENCIÓN! Cosecha Pendiente:\n" + ", ".join(cosechas_listas)
+            self.recordatorio_label.config(text=mensaje, foreground='red')
+            messagebox.showwarning("¡Recordatorio de Cosecha!", mensaje)
+        else:
+            self.recordatorio_label.config(text="Todo al día. Ninguna cosecha lista hoy.", foreground='green')
+
+
+# --- 5. INICIO DE LA APLICACIÓN ---
 if __name__ == "__main__":
-    # ... (app = AppCultivos(), app.mainloop())
     app = AppCultivos()
     app.mainloop()
+
+ 
+
+      
