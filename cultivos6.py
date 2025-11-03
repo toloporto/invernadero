@@ -27,7 +27,6 @@ class Cultivo:
 def validar_fecha(fecha_texto):
     """Convierte texto a un objeto de fecha (YYYY-MM-DD)."""
     try:
-        # Aseguramos que la fecha se parsea como YYYY-MM-DD
         return datetime.datetime.strptime(fecha_texto, '%Y-%m-%d').date()
     except ValueError:
         return None
@@ -46,7 +45,6 @@ def cargar_cultivos():
             for item in datos_cargados:
                 siembra = validar_fecha(item["fecha_siembra"])
                 cosecha = validar_fecha(item["fecha_cosecha"])
-                # Leemos 'notas' o usamos "" si no existe (para archivos antiguos)
                 notas = item.get("notas", "")
                 
                 if siembra and cosecha:
@@ -95,7 +93,7 @@ class AppCultivos(tk.Tk):
         self.revisar_cosechas_al_inicio()
         
     def configurar_estilos(self):
-        """Define los temas, estilos y fuentes de la aplicación."""
+        """Define los temas, estilos y fuentes de la aplicación, incluyendo tags para el Treeview."""
         
         style = ttk.Style(self)
         
@@ -113,16 +111,22 @@ class AppCultivos(tk.Tk):
 
         # 3. Configurar la Lista (Treeview)
         style.configure('Treeview.Heading', font=('Helvetica', 10, 'bold'), background='#E0E0E0', foreground='#333333')
-        style.map('Treeview', background=[('selected', '#C9DFFF')])
-
-        # 4. Configurar Alertas de Recordatorio
-        style.configure('Alerta.TLabel', foreground='red', font=('Helvetica', 12, 'bold'), background='#FFF2CC', padding=5, borderwidth=1, relief="solid")
+        style.map('Treeview', background=[('selected', '#C9DFFF')]) 
         
-        # 5. Configurar Botones
+        # Tags (etiquetas) de color para las filas del Treeview (Reporte)
+        self.lista_tree = ttk.Treeview(self) # Instanciar para que tag_configure funcione
+        # Cosecha Pasada (Gris claro y texto atenuado)
+        self.lista_tree.tag_configure('cosecha_pasada', background='#F0F0F0', foreground='#888888') 
+        # Cosecha Hoy (Amarillo/Naranja de alerta)
+        self.lista_tree.tag_configure('cosecha_hoy', background='#FFEB99', foreground='#9C6500', font=('Helvetica', 10, 'bold'))
+        # Cosecha Futura (Verde suave)
+        self.lista_tree.tag_configure('cosecha_futura', background='#D9EAD3', foreground='#38761D')
+
+        # 4. Configurar Alertas de Recordatorio y Botones
+        style.configure('Alerta.TLabel', foreground='red', font=('Helvetica', 12, 'bold'), background='#FFF2CC', padding=5, borderwidth=1, relief="solid")
         style.configure('TButton', font=('Helvetica', 10, 'bold'), foreground='#FFFFFF', background='#6AA84F') 
         style.map('TButton', background=[('active', '#8FBC8F')]) 
         
-        # 6. Estilo específico para el botón principal (Añadir/Guardar)
         style.configure('Principal.TButton', font=('Helvetica', 11, 'bold'), background='#1E8449')
         style.map('Principal.TButton', background=[('active', '#2ECC71')])
 
@@ -134,7 +138,7 @@ class AppCultivos(tk.Tk):
         self.notas_var.set("") 
         self.fecha_siembra_obj = None
         self.fecha_cosecha_obj = None
-        # Restablecer modo Añadir
+        
         self.btn_guardar.config(text="Añadir a la Lista", style='Principal.TButton')
         self.cultivo_seleccionado_indice = None
         
@@ -170,11 +174,9 @@ class AppCultivos(tk.Tk):
         ttk.Button(frame_agregar, text="Elegir Fecha de Cosecha", 
                    command=lambda: self.mostrar_calendario("cosecha")).pack(fill='x', pady=5)
 
-        # Widget para notas
         ttk.Label(frame_agregar, text="Notas (Opcional):").pack(fill='x', pady=5)
         ttk.Entry(frame_agregar, textvariable=self.notas_var).pack(fill='x', pady=2)
         
-        # Botón principal (Añadir/Guardar)
         self.btn_guardar = ttk.Button(frame_agregar, text="Añadir a la Lista", 
                                      command=self.manejar_agregar_o_editar, style='Principal.TButton')
         self.btn_guardar.pack(fill='x', pady=15)
@@ -190,16 +192,18 @@ class AppCultivos(tk.Tk):
         self.recordatorio_label = ttk.Label(frame_mostrar, text="Recordatorios aparecerán aquí.", font=('Helvetica', 12, 'bold'), style='Alerta.TLabel')
         self.recordatorio_label.pack(fill='x', pady=5)
         
-        # Treeview con la columna 'notas'
-        self.lista_tree = ttk.Treeview(frame_mostrar, columns=('siembra', 'cosecha', 'notas'), show='headings')
+        # Re-instanciar Treeview con columnas de reporte
+        self.lista_tree = ttk.Treeview(frame_mostrar, columns=('siembra', 'cosecha', 'notas', 'faltan'), show='headings')
         self.lista_tree.heading('siembra', text='Siembra')
         self.lista_tree.heading('cosecha', text='Cosecha')
         self.lista_tree.heading('notas', text='Notas')
+        self.lista_tree.heading('faltan', text='Faltan')
         
-        self.lista_tree.column('#0', width=150, anchor='w')
-        self.lista_tree.column('siembra', width=90, anchor='center')
-        self.lista_tree.column('cosecha', width=90, anchor='center')
-        self.lista_tree.column('notas', width=150, anchor='w')
+        self.lista_tree.column('#0', width=130, anchor='w')
+        self.lista_tree.column('siembra', width=80, anchor='center')
+        self.lista_tree.column('cosecha', width=80, anchor='center')
+        self.lista_tree.column('notas', width=120, anchor='w')
+        self.lista_tree.column('faltan', width=100, anchor='center')
         self.lista_tree.pack(fill='both', expand=True, pady=10)
 
         # Marco para los botones de lista
@@ -213,13 +217,24 @@ class AppCultivos(tk.Tk):
                    command=self.manejar_editar_cultivo).pack(side='right', expand=True, fill='x', padx=5)
 
     # --- 4. FUNCIONES CONECTADAS A LA INTERFAZ ---
+    
+    def calcular_tiempo_restante(self, fecha_objetivo):
+        """Calcula el tiempo restante entre hoy y la fecha de cosecha."""
+        hoy = datetime.date.today()
+        
+        if fecha_objetivo < hoy:
+            dias = (hoy - fecha_objetivo).days
+            return f"¡COSECHADO HACE {dias} DÍAS!"
+        elif fecha_objetivo == hoy:
+            return "¡COSECHA HOY!"
+        else:
+            dias = (fecha_objetivo - hoy).days
+            return f"{dias} Días Restantes"
 
     def mostrar_calendario(self, campo_destino):
         """Abre una nueva ventana con el widget de calendario."""
         
         def set_fecha():
-            """Función interna que se ejecuta al seleccionar una fecha."""
-            # Formato de salida del calendario es 'MM/DD/YY'
             fecha_str = cal.get_date() 
             fecha_obj = datetime.datetime.strptime(fecha_str, '%m/%d/%y').date()
             
@@ -271,7 +286,6 @@ class AppCultivos(tk.Tk):
             indice = self.cultivo_seleccionado_indice
             cultivo_a_editar = lista_cultivos[indice]
             
-            # Actualizamos las propiedades
             cultivo_a_editar.nombre = nombre
             cultivo_a_editar.fecha_siembra = fecha_siembra
             cultivo_a_editar.fecha_cosecha = fecha_cosecha
@@ -306,7 +320,6 @@ class AppCultivos(tk.Tk):
         self.nombre_var.set(cultivo_a_editar.nombre)
         self.notas_var.set(cultivo_a_editar.notas)
         
-        # Cargar los objetos de fecha
         self.fecha_siembra_obj = cultivo_a_editar.fecha_siembra
         self.siembra_display_var.set(cultivo_a_editar.fecha_siembra.strftime('%Y-%m-%d'))
         self.fecha_cosecha_obj = cultivo_a_editar.fecha_cosecha
@@ -347,7 +360,7 @@ class AppCultivos(tk.Tk):
             messagebox.showinfo("Éxito", f"El cultivo '{nombre_cultivo}' ha sido eliminado.")
 
     def actualizar_lista_cultivos(self):
-        """Refresca los datos mostrados en la lista Treeview."""
+        """Refresca los datos mostrados en la lista Treeview, aplicando color."""
         
         for item in self.lista_tree.get_children():
             self.lista_tree.delete(item)
@@ -356,10 +369,22 @@ class AppCultivos(tk.Tk):
             siembra_f = cultivo.fecha_siembra.strftime('%d-%m-%Y')
             cosecha_f = cultivo.fecha_cosecha.strftime('%d-%m-%Y')
             
-            # Insertamos el valor de notas
+            tiempo_restante = self.calcular_tiempo_restante(cultivo.fecha_cosecha) 
+            
+            # Lógica de color condicional
+            hoy = datetime.date.today()
+            if cultivo.fecha_cosecha < hoy:
+                tag = 'cosecha_pasada'
+            elif cultivo.fecha_cosecha == hoy:
+                tag = 'cosecha_hoy'
+            else:
+                tag = 'cosecha_futura'
+                
+            # Insertamos la fila usando el Tag
             self.lista_tree.insert('', tk.END, iid=str(i), 
                                    text=cultivo.nombre, 
-                                   values=(siembra_f, cosecha_f, cultivo.notas))
+                                   values=(siembra_f, cosecha_f, cultivo.notas, tiempo_restante),
+                                   tags=(tag,))
 
     def revisar_cosechas_al_inicio(self):
         """Revisa y muestra una alerta si hay cultivos listos hoy."""
@@ -375,7 +400,6 @@ class AppCultivos(tk.Tk):
             self.recordatorio_label.config(text=mensaje, style='Alerta.TLabel')
             messagebox.showwarning("¡Recordatorio de Cosecha!", mensaje)
         else:
-            # Restauramos el estilo base si no hay alerta
             self.recordatorio_label.config(text="Todo al día. Ninguna cosecha lista hoy.", style='TLabel', foreground='#38761D')
 
 
@@ -383,3 +407,4 @@ class AppCultivos(tk.Tk):
 if __name__ == "__main__":
     app = AppCultivos()
     app.mainloop()
+               
