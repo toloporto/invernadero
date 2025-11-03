@@ -384,6 +384,317 @@ Una vez que lo ejecutes y presiones "📈 Analizar Ventas Externas", verás una 
 
 Ahora que tenemos la Predicción Simple lista, ¿pasamos a las Alarmas Inteligentes para configurar alertas basadas en el ciclo de vida de los cultivos?
 
+Asistente de programación
+¡Fantástico! Las Alarmas Inteligentes son un paso crucial para pasar de ser un simple gestor a un verdadero asistente proactivo.
+
+El objetivo es que, para cada tipo de cultivo, podamos definir:
+
+Días de Alerta Temprana: ¿Con cuántos días de antelación queremos que se active una alarma antes de la fecha de cosecha (ej: 7 días para preparar el equipo)?
+
+Ciclo de Vida (Opcional): Una referencia de cuántos días dura normalmente ese cultivo (ej: El tomate suele tardar 90 días).
+
+Como no tenemos un campo para el "tipo" de cultivo ni para la "alerta", te propongo que hagamos lo siguiente:
+
+Plan de Implementación de Alarmas Inteligentes
+Modificar el Modelo Cultivo: Añadiremos un nuevo campo llamado dias_alerta al modelo Cultivo.
+
+Modificar la Interfaz: Añadiremos una nueva caja de entrada en el panel izquierdo para que el usuario pueda ingresar los "Días de Alerta Previa".
+
+Nueva Lógica de Alarma: Crearemos una nueva función que no solo revisa la cosecha de hoy, sino que también verifica si algún cultivo está dentro del rango de días de alerta que ha especificado el usuario.
+
+Asistente de programación
+¡Fantástico! Las Alarmas Inteligentes son un paso crucial para pasar de ser un simple gestor a un verdadero asistente proactivo.
+Imagen de an alarm clock
+Shutterstock
+
+El objetivo es que, para cada tipo de cultivo, podamos definir:
+
+Días de Alerta Temprana: ¿Con cuántos días de antelación queremos que se active una alarma antes de la fecha de cosecha (ej: 7 días para preparar el equipo)?
+
+Ciclo de Vida (Opcional): Una referencia de cuántos días dura normalmente ese cultivo (ej: El tomate suele tardar 90 días).
+
+Como no tenemos un campo para el "tipo" de cultivo ni para la "alerta", te propongo que hagamos lo siguiente:
+
+📝 Plan de Implementación de Alarmas Inteligentes
+Modificar el Modelo Cultivo: Añadiremos un nuevo campo llamado dias_alerta al modelo Cultivo.
+
+Modificar la Interfaz: Añadiremos una nueva caja de entrada en el panel izquierdo para que el usuario pueda ingresar los "Días de Alerta Previa".
+
+Nueva Lógica de Alarma: Crearemos una nueva función que no solo revisa la cosecha de hoy, sino que también verifica si algún cultivo está dentro del rango de días de alerta que ha especificado el usuario.
+
+1. Modificación en cultivos.py (Modelo, Funciones y Widgets)
+Aquí tienes las secciones de código que debes actualizar en tu archivo cultivos.py.
+
+A. Actualizar el modelo Cultivo
+Busca la clase Cultivo (cerca de la línea 32) y añade dias_alerta=0 a __init__:
+# --- 1. CLASE MODELO (LA LÓGICA DE NEGOCIO) ---
+class Cultivo:
+    """Clase base para guardar la información de un cultivo..."""
+    # Nuevo parámetro: dias_alerta
+    def __init__(self, nombre, fecha_siembra, fecha_cosecha, notas="", zona="", precio_compra=0.0, precio_venta=0.0, dias_alerta=0):
+        self.nombre = nombre
+        self.fecha_siembra = fecha_siembra
+        self.fecha_cosecha = fecha_cosecha
+        self.notas = notas
+        self.zona = zona 
+        self.precio_compra = precio_compra 
+        self.precio_venta = precio_venta 
+        self.dias_alerta = dias_alerta # <- NUEVO CAMPO
+
+B. Actualizar cargar_cultivos y guardar_cultivos
+Necesitamos asegurarnos de que el nuevo campo se carga y se guarda correctamente en el JSON.
+
+En cargar_cultivos (cerca de la línea 60):
+
+# En la función 'cargar_cultivos'
+# ...
+            for item in datos_cargados:
+                # ... (resto de variables)
+                precio_venta = float(item.get("precio_venta", 0.0))
+                dias_alerta = int(item.get("dias_alerta", 0)) # <- NUEVO CAMPO
+                
+                if siembra and cosecha:
+                    # Pasar el nuevo argumento al constructor:
+                    nuevo = Cultivo(item["nombre"], siembra, cosecha, notas, zona, precio_compra, precio_venta, dias_alerta)
+                    lista_cultivos.append(nuevo)
+# ...
+
+En guardar_cultivos (cerca de la línea 85):
+# En la función 'guardar_cultivos'
+# ...
+        for cultivo in lista_cultivos:
+            cultivo_dict = {
+                "nombre": cultivo.nombre,
+                # ... (resto de campos)
+                "precio_compra": cultivo.precio_compra,
+                "precio_venta": cultivo.precio_venta,
+                "dias_alerta": cultivo.dias_alerta # <- NUEVO CAMPO
+            }
+            datos_para_json.append(cultivo_dict)
+# ...
+
+C. Crear el Widget de Días de Alerta
+Busca el método crear_widgets (cerca de la línea 157) y añade el siguiente código en el Marco Izquierdo (antes del botón self.btn_guardar).
+
+# ... (dentro de self.crear_widgets, justo antes del botón self.btn_guardar)
+
+        self.dias_alerta_var = tk.StringVar(value="7") # Valor por defecto
+        
+        frame_alerta = ttk.LabelFrame(frame_agregar, text="🔔 Alarma Inteligente", padding="5")
+        frame_alerta.pack(fill='x', pady=5)
+        
+        ttk.Label(frame_alerta, text="Días de Alerta Previa a Cosecha:").pack(fill='x', pady=2)
+        ttk.Entry(frame_alerta, textvariable=self.dias_alerta_var).pack(fill='x', pady=1)
+
+# ... (El resto de la función crear_widgets sigue igual)
+
+Asistente de programación
+¡Fantástico! Las Alarmas Inteligentes son un paso crucial para pasar de ser un simple gestor a un verdadero asistente proactivo.
+Imagen de an alarm clock
+Shutterstock
+
+El objetivo es que, para cada tipo de cultivo, podamos definir:
+
+Días de Alerta Temprana: ¿Con cuántos días de antelación queremos que se active una alarma antes de la fecha de cosecha (ej: 7 días para preparar el equipo)?
+
+Ciclo de Vida (Opcional): Una referencia de cuántos días dura normalmente ese cultivo (ej: El tomate suele tardar 90 días).
+
+Como no tenemos un campo para el "tipo" de cultivo ni para la "alerta", te propongo que hagamos lo siguiente:
+
+📝 Plan de Implementación de Alarmas Inteligentes
+Modificar el Modelo Cultivo: Añadiremos un nuevo campo llamado dias_alerta al modelo Cultivo.
+
+Modificar la Interfaz: Añadiremos una nueva caja de entrada en el panel izquierdo para que el usuario pueda ingresar los "Días de Alerta Previa".
+
+Nueva Lógica de Alarma: Crearemos una nueva función que no solo revisa la cosecha de hoy, sino que también verifica si algún cultivo está dentro del rango de días de alerta que ha especificado el usuario.
+
+1. Modificación en cultivos.py (Modelo, Funciones y Widgets)
+Aquí tienes las secciones de código que debes actualizar en tu archivo cultivos.py.
+
+A. Actualizar el modelo Cultivo
+Busca la clase Cultivo (cerca de la línea 32) y añade dias_alerta=0 a __init__:
+
+Python
+# --- 1. CLASE MODELO (LA LÓGICA DE NEGOCIO) ---
+class Cultivo:
+    """Clase base para guardar la información de un cultivo..."""
+    # Nuevo parámetro: dias_alerta
+    def __init__(self, nombre, fecha_siembra, fecha_cosecha, notas="", zona="", precio_compra=0.0, precio_venta=0.0, dias_alerta=0):
+        self.nombre = nombre
+        self.fecha_siembra = fecha_siembra
+        self.fecha_cosecha = fecha_cosecha
+        self.notas = notas
+        self.zona = zona 
+        self.precio_compra = precio_compra 
+        self.precio_venta = precio_venta 
+        self.dias_alerta = dias_alerta # <- NUEVO CAMPO
+B. Actualizar cargar_cultivos y guardar_cultivos
+Necesitamos asegurarnos de que el nuevo campo se carga y se guarda correctamente en el JSON.
+
+En cargar_cultivos (cerca de la línea 60):
+
+Python
+# En la función 'cargar_cultivos'
+# ...
+            for item in datos_cargados:
+                # ... (resto de variables)
+                precio_venta = float(item.get("precio_venta", 0.0))
+                dias_alerta = int(item.get("dias_alerta", 0)) # <- NUEVO CAMPO
+                
+                if siembra and cosecha:
+                    # Pasar el nuevo argumento al constructor:
+                    nuevo = Cultivo(item["nombre"], siembra, cosecha, notas, zona, precio_compra, precio_venta, dias_alerta)
+                    lista_cultivos.append(nuevo)
+# ...
+En guardar_cultivos (cerca de la línea 85):
+
+Python
+# En la función 'guardar_cultivos'
+# ...
+        for cultivo in lista_cultivos:
+            cultivo_dict = {
+                "nombre": cultivo.nombre,
+                # ... (resto de campos)
+                "precio_compra": cultivo.precio_compra,
+                "precio_venta": cultivo.precio_venta,
+                "dias_alerta": cultivo.dias_alerta # <- NUEVO CAMPO
+            }
+            datos_para_json.append(cultivo_dict)
+# ...
+C. Crear el Widget de Días de Alerta
+Busca el método crear_widgets (cerca de la línea 157) y añade el siguiente código en el Marco Izquierdo (antes del botón self.btn_guardar).
+
+Python
+# ... (dentro de self.crear_widgets, justo antes del botón self.btn_guardar)
+
+        self.dias_alerta_var = tk.StringVar(value="7") # Valor por defecto
+        
+        frame_alerta = ttk.LabelFrame(frame_agregar, text="🔔 Alarma Inteligente", padding="5")
+        frame_alerta.pack(fill='x', pady=5)
+        
+        ttk.Label(frame_alerta, text="Días de Alerta Previa a Cosecha:").pack(fill='x', pady=2)
+        ttk.Entry(frame_alerta, textvariable=self.dias_alerta_var).pack(fill='x', pady=1)
+
+# ... (El resto de la función crear_widgets sigue igual)
+D. Actualizar manejar_agregar_o_editar
+Necesitamos leer el valor del nuevo campo y guardarlo en el objeto Cultivo.
+
+Busca la función manejar_agregar_o_editar (cerca de la línea 274).
+
+Validación de dias_alerta: Añade esta validación al inicio:
+
+# ... (Después de validar nombre, fechas y precios)
+    try:
+        precio_compra = float(self.compra_var.get().strip() or 0.0)
+        precio_venta = float(self.venta_var.get().strip() or 0.0)
+
+        # --- NUEVA VALIDACIÓN ---
+        dias_alerta = int(self.dias_alerta_var.get().strip() or 0)
+        if dias_alerta < 0:
+            raise ValueError("La alarma no puede tener días negativos.")
+        # ------------------------
+
+    except ValueError as e:
+        messagebox.showerror("Error", f"Los días de alerta deben ser un número entero positivo. {e}")
+        return
+# ...
+Guardar el valor: En la creación (modo añadir):
+# ... (Dentro de if self.cultivo_seleccionado_indice is None:)
+    if self.cultivo_seleccionado_indice is None:
+        # Pasar el nuevo parámetro 'dias_alerta'
+        nuevo_cultivo = Cultivo(nombre, fecha_siembra, fecha_cosecha, notas, zona, precio_compra, precio_venta, dias_alerta)
+        lista_cultivos.append(nuevo_cultivo)
+        msg = f"'{nombre}' añadido con éxito."
+# ...
+
+Actualizar el valor: En la edición:
+
+# ... (Dentro de else: (modo editar))
+    else:
+        indice = self.cultivo_seleccionado_indice
+        cultivo_a_editar = lista_cultivos[indice]
+        # ... (resto de campos)
+        cultivo_a_editar.precio_compra = precio_compra
+        cultivo_a_editar.precio_venta = precio_venta
+        cultivo_a_editar.dias_alerta = dias_alerta # <- ASIGNAR NUEVO VALOR
+        msg = f"'{nombre}' actualizado con éxito."
+# ...
+
+E. Actualizar manejar_editar_cultivo y limpiar_campos
+Necesitamos mostrar el valor de la alerta al editar:
+
+En manejar_editar_cultivo (cerca de la línea 324):
+
+# ... (Dentro de manejar_editar_cultivo)
+        cultivo_a_editar = lista_cultivos[indice]
+        # ... (resto de campos)
+        self.venta_var.set(f"{cultivo_a_editar.precio_venta:.2f}")
+        self.dias_alerta_var.set(str(cultivo_a_editar.dias_alerta)) # <- MOSTRAR EL VALOR
+        self.fecha_siembra_obj = cultivo_a_editar.fecha_siembra
+# ...
+
+En limpiar_campos (cerca de la línea 141):
+# ... (Dentro de limpiar_campos)
+        self.cosecha_display_var.set("Seleccionar fecha...")
+        self.notas_var.set("")
+        self.zona_var.set("")
+        self.compra_var.set("")
+        self.venta_var.set("")
+        self.dias_alerta_var.set("7") # <- RESTAURAR VALOR POR DEFECTO
+        self.fecha_siembra_obj = None
+# ...
+
+2. Implementación de la Lógica de Alarma
+Finalmente, modifica la función revisar_cosechas_al_inicio (cerca de la línea 565) para que compruebe tanto la cosecha de hoy como las alertas tempranas.
+
+Reemplaza la función completa revisar_cosechas_al_inicio por esta nueva versión
+
+def revisar_cosechas_al_inicio(self):
+        """Revisa si hay cultivos listos para cosechar o que necesitan una alerta temprana."""
+        hoy = datetime.date.today()
+        cosechas_hoy = []
+        alertas_tempranas = []
+        
+        for cultivo in lista_cultivos:
+            dias_restantes = (cultivo.fecha_cosecha - hoy).days
+            
+            if dias_restantes < 0:
+                # Cultivo ya cosechado
+                continue
+            elif dias_restantes == 0:
+                # Cosecha hoy
+                cosechas_hoy.append(cultivo.nombre)
+            elif 0 < dias_restantes <= cultivo.dias_alerta:
+                # Alerta temprana: entre 1 día y los 'dias_alerta' configurados
+                alertas_tempranas.append(f"{cultivo.nombre} (Cosecha en {dias_restantes} días)")
+
+        
+        mensaje = ""
+        titulo = ""
+        
+        if cosechas_hoy:
+            mensaje += "⚠️ ¡COSECHA PENDIENTE HOY! ⚠️\n" + ", ".join(cosechas_hoy)
+            titulo = "¡ALERTA MÁXIMA!"
+        
+        if alertas_tempranas:
+            if mensaje:
+                mensaje += "\n\n"
+            mensaje += "🔔 Preparación de Cosecha:\n" + "\n".join(alertas_tempranas)
+            if not titulo:
+                 titulo = "Alerta Temprana"
+
+        if mensaje:
+            self.recordatorio_label.config(text=mensaje, style='Alerta.TLabel')
+            messagebox.showwarning(titulo, mensaje)
+        else:
+            self.recordatorio_label.config(text="Todo al día. Ninguna cosecha ni alerta activa.", style='TLabel', foreground=COLOR_ENFASIS_VERDE)
+
+Con estos cambios, tu aplicación ahora es capaz de gestionar alarmas personalizadas para cada cultivo.
+
+¿Deseas que te muestre el código completo de cultivos.py con todas estas modificaciones antes de pasar al último objetivo (Desarrollo Web / Backend)?
+
+
+
 
 
 
