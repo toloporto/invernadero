@@ -21,7 +21,6 @@ def analizar_ventas(nombre_archivo):
 
     try:
         # Cargar el CSV en un DataFrame de pandas
-        # Usamos sep=',' porque el archivo de datos lo requiere
         df = pd.read_csv(nombre_archivo, sep=',')
         print("✅ Datos cargados con éxito.")
     except pd.errors.ParserError as e:
@@ -36,7 +35,7 @@ def analizar_ventas(nombre_archivo):
     # Aseguramos que la columna clave 'Venta_Total' sea numérica
     df['Venta_Total'] = pd.to_numeric(df['Venta_Total'], errors='coerce')
     
-    # Eliminamos filas que pudieran haber fallado en la conversión (si hay valores no numéricos)
+    # Eliminamos filas que pudieran haber fallado en la conversión
     df.dropna(subset=['Venta_Total'], inplace=True)
     
     print("✅ Datos preparados y columna 'Venta_Total' verificada.")
@@ -89,10 +88,7 @@ def analizar_ventas(nombre_archivo):
     plt.tight_layout()
     
     print("\n✅ Generando gráfico de visualización. Una ventana se abrirá...")
-    plt.show() # Muestra la ventana del gráfico 
-
-[Image of a data visualization chart]
-
+    plt.show() # Muestra la ventana del gráfico
 
 
 # --- 7. EJECUCIÓN DEL SCRIPT ---
