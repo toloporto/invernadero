@@ -1,0 +1,71 @@
+Manual de Uso: Asistente de Cultivos (v15.1)
+El Asistente de Cultivos es una aplicación de escritorio diseñada para gestionar, planificar y analizar tus proyectos agrícolas, combinando la gestión de datos con capacidades financieras y de análisis avanzado.
+
+1. ⚙️ Requisitos y Ejecución
+Tarea	Instrucción
+Archivos Necesarios	cultivos.py (código), ventas_mensuales.csv (datos de análisis), cultivos.json (datos guardados automáticamente). Deben estar en la misma carpeta.
+Librerías	Necesitas tener instaladas: tkinter (incluido en Python), pandas, matplotlib, y tkcalendar.
+Ejecución	Abre la terminal/PowerShell en la carpeta del proyecto y ejecuta: python cultivos.py
+
+Exportar a Hojas de cálculo
+
+2. 📝 Panel Izquierdo: Añadir/Editar Cultivo
+Este panel se utiliza para ingresar y modificar la información detallada de cada proyecto de cultivo.
+
+Sección	Funcionalidad
+Nombre	Nombre del cultivo (ej: "Tomate Cherry").
+Zona	Permite clasificar el cultivo por ubicación (ej: "Invernadero", "Zona A").
+Fechas	Usa los botones "Elegir Fecha..." para seleccionar la fecha de Siembra y Cosecha con un calendario interactivo.
+Costo (€)	El precio o costo asociado con la compra de semillas, tierra, etc.
+Venta Est. (€)	El precio de venta estimado o el ingreso potencial que esperas obtener.
+Notas	Campo opcional para información adicional sobre cuidados, plagas, etc.
+Botones	"Añadir a la Lista" / "Guardar Cambios": Guarda el nuevo cultivo o aplica modificaciones al seleccionado. "Limpiar Campos": Borra el contenido de los formularios.
+
+Exportar a Hojas de cálculo
+
+3. 📊 Panel Derecho: Gestión y Reportes
+Este panel muestra un resumen de todos tus cultivos y contiene las herramientas de reporte y análisis.
+
+A. Resumen Financiero Potencial
+Muestra una suma rápida de la salud financiera de todos tus cultivos activos:
+
+Costo Total: Suma de todos los costos de compra.
+
+Venta Est. Total: Suma de todas las ventas estimadas.
+
+Margen Potencial: La diferencia entre la venta total y el costo total.
+
+B. Lista de Cultivos (Treeview)
+Muestra todos los cultivos en formato de tabla, destacando información clave:
+
+Columna	Descripción	Indicador Visual
+Cultivo / Zona	El nombre y la ubicación de tu proyecto.	
+Siembra / Cosecha	Las fechas clave.	
+Costo / Venta / Margen	Los valores financieros individuales.	
+Faltan	Muestra los días restantes hasta la cosecha.	Verde: Faltan días. Amarillo/Negro: ¡Cosecha Hoy! Gris: Ya Cosechado.
+
+Exportar a Hojas de cálculo
+
+C. Botones de Gestión y Análisis
+Botón	Funcionalidad	Módulo(s) Clave
+✏️ Editar Seleccionado	Carga la información del cultivo seleccionado en el panel izquierdo para su edición.	Tkinter
+❌ Eliminar	Elimina permanentemente el cultivo seleccionado tras pedir confirmación.	Tkinter
+📤 Exportar Cultivos CSV	Exporta todos los datos de tus cultivos a un archivo CSV con delimitador ; (punto y coma).	CSV, Tkinter
+📈 Analizar Ventas Externas	¡NUEVA FUNCIÓN! Carga y procesa el archivo ventas_mensuales.csv para generar análisis detallados.	Pandas, Matplotlib
+
+Exportar a Hojas de cálculo
+
+4. 📈 Funcionalidad de Análisis Avanzado
+Al hacer clic en "Analizar Ventas Externas", la aplicación:
+
+Valida el archivo: Verifica que ventas_mensuales.csv exista.
+
+Calcula Métricas: Imprime en la consola las ventas totales, promedio, máxima y mínima.
+
+Muestra Gráficos: Abre una ventana flotante con dos visualizaciones lado a lado:
+
+Gráfico 1 (Barras): Muestra las Ventas Totales por Tipo de Producto para identificar los productos más vendidos.
+
+Gráfico 2 (Líneas): Muestra la Tendencia de Ventas a lo Largo del Tiempo (por Mes) para identificar estacionalidad o crecimiento.
+
+Siguiente paso: ¿Te gustaría que implementemos el Análisis de Ventas por Región para completar el análisis de los datos externos, o tienes alguna otra consulta sobre cómo usar las funciones existentes?
