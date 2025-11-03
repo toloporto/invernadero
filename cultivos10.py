@@ -34,8 +34,7 @@ COLOR_ALERTA_CLARA = '#FFC107'
 # --- 1. CLASE MODELO (LA LÓGICA DE NEGOCIO) ---
 
 class Cultivo:
-    """Clase base para guardar la información de un cultivo, incluyendo datos financieros y de ubicación."""
-    # Nuevo parámetro: dias_alerta
+    """Clase base para guardar la información de un cultivo, incluyendo datos financieros, ubicación y alerta."""
     def __init__(self, nombre, fecha_siembra, fecha_cosecha, notas="", zona="", precio_compra=0.0, precio_venta=0.0, dias_alerta=0):
         self.nombre = nombre
         self.fecha_siembra = fecha_siembra
@@ -44,7 +43,7 @@ class Cultivo:
         self.zona = zona 
         self.precio_compra = precio_compra 
         self.precio_venta = precio_venta 
-        self.dias_alerta = dias_alerta # <- NUEVO CAMPO
+        self.dias_alerta = dias_alerta 
 
 # --- 2. FUNCIONES DE MANEJO DE ARCHIVOS Y DATOS ---
 
@@ -73,10 +72,9 @@ def cargar_cultivos():
                 zona = item.get("zona", "") 
                 precio_compra = float(item.get("precio_compra", 0.0))
                 precio_venta = float(item.get("precio_venta", 0.0))
-                dias_alerta = int(item.get("dias_alerta", 0)) # <- NUEVO CAMPO
+                dias_alerta = int(item.get("dias_alerta", 0)) 
                 
                 if siembra and cosecha:
-                    # Pasar el nuevo argumento al constructor:
                     nuevo = Cultivo(item["nombre"], siembra, cosecha, notas, zona, precio_compra, precio_venta, dias_alerta)
                     lista_cultivos.append(nuevo)
                     
@@ -95,7 +93,7 @@ def guardar_cultivos():
             "zona": cultivo.zona, 
             "precio_compra": cultivo.precio_compra,
             "precio_venta": cultivo.precio_venta,
-            "dias_alerta": cultivo.dias_alerta # <- NUEVO CAMPO
+            "dias_alerta": cultivo.dias_alerta 
         }
         datos_para_json.append(cultivo_dict)
         
@@ -191,7 +189,7 @@ class AppCultivos(tk.Tk):
         self.zona_var.set("")
         self.compra_var.set("")
         self.venta_var.set("")
-        self.dias_alerta_var.set("7") # <- RESTAURAR VALOR POR DEFECTO
+        self.dias_alerta_var.set("7") # Restaurar valor por defecto
         self.fecha_siembra_obj = None
         self.fecha_cosecha_obj = None
         
@@ -257,7 +255,6 @@ class AppCultivos(tk.Tk):
         
         ttk.Label(frame_alerta, text="Días de Alerta Previa a Cosecha:").pack(fill='x', pady=2)
         ttk.Entry(frame_alerta, textvariable=self.dias_alerta_var).pack(fill='x', pady=1)
-        # ----------------------------------------
         
         self.btn_guardar = ttk.Button(frame_agregar, text="Añadir a la Lista", 
                                      command=self.manejar_agregar_o_editar, style='Principal.TButton')
@@ -385,11 +382,9 @@ class AppCultivos(tk.Tk):
             precio_compra = float(self.compra_var.get().strip() or 0.0)
             precio_venta = float(self.venta_var.get().strip() or 0.0)
             
-            # --- NUEVA VALIDACIÓN DE ALARMA ---
             dias_alerta = int(self.dias_alerta_var.get().strip() or 0)
             if dias_alerta < 0:
                 raise ValueError("La alarma no puede tener días negativos.")
-            # -----------------------------------
             
         except ValueError as e:
             messagebox.showerror("Error", f"Los campos de Costo, Venta o Días de Alerta deben ser números válidos. {e}")
@@ -404,12 +399,12 @@ class AppCultivos(tk.Tk):
             return
             
         if self.cultivo_seleccionado_indice is None:
-            # Modo Añadir (incluye dias_alerta)
+            # Modo Añadir
             nuevo_cultivo = Cultivo(nombre, fecha_siembra, fecha_cosecha, notas, zona, precio_compra, precio_venta, dias_alerta)
             lista_cultivos.append(nuevo_cultivo)
             msg = f"'{nombre}' añadido con éxito."
         else:
-            # Modo Editar (incluye dias_alerta)
+            # Modo Editar
             indice = self.cultivo_seleccionado_indice
             cultivo_a_editar = lista_cultivos[indice]
             cultivo_a_editar.nombre = nombre
@@ -419,7 +414,7 @@ class AppCultivos(tk.Tk):
             cultivo_a_editar.zona = zona
             cultivo_a_editar.precio_compra = precio_compra
             cultivo_a_editar.precio_venta = precio_venta
-            cultivo_a_editar.dias_alerta = dias_alerta # <- ASIGNAR NUEVO VALOR
+            cultivo_a_editar.dias_alerta = dias_alerta
             msg = f"'{nombre}' actualizado con éxito."
             
         guardar_cultivos()
@@ -445,7 +440,7 @@ class AppCultivos(tk.Tk):
         self.zona_var.set(cultivo_a_editar.zona)
         self.compra_var.set(f"{cultivo_a_editar.precio_compra:.2f}")
         self.venta_var.set(f"{cultivo_a_editar.precio_venta:.2f}")
-        self.dias_alerta_var.set(str(cultivo_a_editar.dias_alerta)) # <- MOSTRAR EL VALOR
+        self.dias_alerta_var.set(str(cultivo_a_editar.dias_alerta)) 
         
         self.fecha_siembra_obj = cultivo_a_editar.fecha_siembra
         self.siembra_display_var.set(cultivo_a_editar.fecha_siembra.strftime('%Y-%m-%d'))
@@ -625,6 +620,9 @@ class AppCultivos(tk.Tk):
             plt.tight_layout(rect=[0, 0.03, 1, 0.95]) 
             messagebox.showinfo("Análisis Completo", f"Se han generado tres gráficos, incluyendo una predicción para {mes_futuro_nombre}.")
             plt.show() 
+
+[Image of a data dashboard with charts]
+
 
         except Exception as e:
             messagebox.showerror("Error de Gráfico/Predicción", f"No se pudo generar el gráfico o el modelo: {e}")
