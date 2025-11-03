@@ -209,4 +209,183 @@ Una vez que reemplaces el código y ejecutes la aplicación, el botón "📈 Ana
 
 ¿Necesitas el código completo de cultivos.py con esta última modificación, o prefieres pasar directamente a la Predicción Simple (proyectar ventas futuras)?
 
+Añadir la Predicción Simple a tu análisis es un gran salto hacia la inteligencia de datos en tu aplicación. Utilizaremos la Regresión Lineal para proyectar las tendencias futuras.
+
+Para esto, necesitamos introducir una nueva librería de Python que simplifica la creación de modelos de regresión: scikit-learn (o sklearn).
+
+Requisito Adicional
+Si aún no lo tienes instalado, abre tu terminal y ejecuta:
+pip install scikit-learn
+
+Modificación en cultivos.py (Predicción Simple)
+Vamos a actualizar el método analizar_ventas_externas en dos pasos:
+
+Nuevo Import: Añadiremos la clase LinearRegression de sklearn.
+
+Nueva Lógica de Predicción: Entrenaremos el modelo con ventas_por_mes y haremos una predicción para el siguiente mes.
+
+Visualización: Añadiremos la línea de predicción al gráfico de Tendencia Temporal.
+
+Reemplaza la versión actual de analizar_ventas_externas en tu archivo cultivos.py por el siguiente código.
+
+1. Nuevos Imports Necesarios
+Asegúrate de que tus imports al inicio de cultivos.py incluyan:
+
+# ... (otros imports)
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression # <--- NUEVO IMPORT
+import numpy as np # <--- NUEVO IMPORT para manejar arrays
+
+2. Código del Método analizar_ventas_externas (con Predicción)
+Aquí está el método completo. Presta especial atención a la nueva Sección 6. Predicción de Ventas (Regresión Lineal) y cómo actualiza el Gráfico 2.
+
+
+def analizar_ventas_externas(self):
+        """
+        Carga el archivo CSV externo, realiza análisis descriptivo, y genera 
+        tres gráficos: Producto, Tendencia Temporal (con Predicción), y Región.
+        """
+        nombre_archivo = NOMBRE_ARCHIVO_VENTAS
+        
+        # 1. Carga de Datos y Manejo de Errores (Sin cambios)
+        if not os.path.exists(nombre_archivo):
+            # ... (manejo de error)
+            messagebox.showwarning("Advertencia", 
+                                   f"No se encontró el archivo de ventas externas '{nombre_archivo}'.\n"
+                                   f"Asegúrate de que exista y se llame '{NOMBRE_ARCHIVO_VENTAS}'.")
+            return
+        try:
+            df = pd.read_csv(nombre_archivo, sep=',')
+        except Exception as e:
+            # ... (manejo de error)
+            messagebox.showerror("Error", f"Error al cargar/formato de datos: {e}")
+            return
+
+        # 2. Preparación de Datos (Sin cambios)
+        df['Venta_Total'] = pd.to_numeric(df['Venta_Total'], errors='coerce')
+        df.dropna(subset=['Venta_Total'], inplace=True)
+        if df.empty:
+            messagebox.showwarning("Advertencia", "El archivo de ventas está vacío o solo contiene encabezados válidos.")
+            return
+
+        # 3. Análisis por Producto (Sin cambios)
+        ventas_por_producto = df.groupby('Producto')['Venta_Total'].sum().sort_values(ascending=False)
+        
+        # 4. Análisis Temporal (Preparación para Regresión)
+        mapa_meses = {'Ene': 1, 'Feb': 2, 'Mar': 3, 'Abr': 4, 'May': 5, 'Jun': 6, 
+                      'Jul': 7, 'Ago': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dic': 12}
+        df['Num_Mes'] = df['Mes'].map(mapa_meses)
+        ventas_por_mes_df = df.groupby(['Num_Mes', 'Mes'])['Venta_Total'].sum().reset_index()
+        ventas_por_mes_df = ventas_por_mes_df.sort_values(by='Num_Mes').reset_index(drop=True)
+        
+        # 5. Análisis por Región (Sin cambios)
+        ventas_por_region = df.groupby('Region')['Venta_Total'].sum().sort_values(ascending=False)
+        
+        
+        # --- NUEVO: 6. PREDICCIÓN DE VENTAS (REGRESIÓN LINEAL) ---
+        
+        # Preparamos los datos para el modelo X (Meses) y Y (Ventas)
+        X = ventas_por_mes_df['Num_Mes'].values.reshape(-1, 1) 
+        Y = ventas_por_mes_df['Venta_Total'].values
+        
+        # Creamos y entrenamos el modelo
+        modelo_regresion = LinearRegression()
+        modelo_regresion.fit(X, Y)
+        
+        # Hacemos una predicción para el siguiente mes
+        ultimo_mes_num = ventas_por_mes_df['Num_Mes'].max()
+        mes_futuro_num = ultimo_mes_num + 1
+        
+        # Calculamos el nombre del mes futuro para la visualización (Ej: Abr -> May)
+        meses_lista = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+        mes_futuro_nombre = meses_lista[mes_futuro_num - 1] if mes_futuro_num <= 12 else f"Mes {mes_futuro_num}"
+
+        # Predecimos la venta para ese mes
+        prediccion_futura = modelo_regresion.predict(np.array([[mes_futuro_num]]))[0]
+        
+        print("\n--- PREDICCIÓN DE VENTAS ---")
+        print(f"Predicción de venta para {mes_futuro_nombre}: €{prediccion_futura:.2f}")
+
+        # Añadimos la predicción al DataFrame temporal para el gráfico
+        X_pred = np.append(X, [[mes_futuro_num]], axis=0) # Incluimos el mes futuro
+        Y_tendencia = modelo_regresion.predict(X_pred)     # Calculamos toda la línea de tendencia
+        
+        # Preparamos las etiquetas del eje X para el gráfico
+        labels_x = ventas_por_mes_df['Mes'].tolist() + [f"Pred. {mes_futuro_nombre}"]
+        
+        
+        # --- 7. VISUALIZACIÓN DE DATOS con Matplotlib (Tres Subplots) ---
+        try:
+            plt.style.use('dark_background') 
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
+            fig.suptitle(f'Análisis de Ventas (Predicción {mes_futuro_nombre}: €{prediccion_futura:.2f})', color='white', fontsize=16)
+
+            
+            # --- Gráfico 1: Ventas por Producto (Barras) ---
+            ventas_por_producto.plot(kind='bar', color='#1E8449', ax=ax1) 
+            ax1.set_title('1. Ventas por Producto', color='white')
+            # ... (configuración de ejes, sin cambios)
+            ax1.set_xlabel('Producto', color='white')
+            ax1.set_ylabel('Venta Total (€)', color='white')
+            ax1.tick_params(axis='x', rotation=45, colors='white')
+            ax1.tick_params(axis='y', colors='white')
+            ax1.grid(axis='y', linestyle='--', alpha=0.4) 
+            
+            # --- Gráfico 2: Ventas por Mes (Líneas con Predicción) ---
+            # Datos Históricos
+            ax2.plot(ventas_por_mes_df['Mes'], ventas_por_mes_df['Venta_Total'], 
+                     marker='o', linestyle='-', color='#007BFF', linewidth=3, label='Ventas Históricas')
+            # Línea de Tendencia y Predicción
+            ax2.plot(labels_x, Y_tendencia, 
+                     linestyle='--', color='#FFC107', linewidth=2, label='Predicción Lineal')
+                     
+            ax2.set_title('2. Tendencia Temporal y Predicción', color='white')
+            ax2.set_xlabel('Mes', color='white')
+            ax2.set_ylabel('Venta Total (€)', color='white')
+            ax2.tick_params(axis='x', rotation=45, colors='white')
+            ax2.tick_params(axis='y', colors='white')
+            ax2.grid(axis='both', linestyle='--', alpha=0.4) 
+            ax2.legend(loc='upper left', frameon=False) 
+            
+            # --- Gráfico 3: Ventas por Región (Barras) ---
+            ventas_por_region.plot(kind='bar', color='#FFC107', ax=ax3) 
+            ax3.set_title('3. Ventas por Región', color='white')
+            # ... (configuración de ejes, sin cambios)
+            ax3.set_xlabel('Región', color='white')
+            ax3.set_ylabel('Venta Total (€)', color='white')
+            ax3.tick_params(axis='x', rotation=45, colors='white')
+            ax3.tick_params(axis='y', colors='white')
+            ax3.grid(axis='y', linestyle='--', alpha=0.4) 
+
+            
+            plt.tight_layout(rect=[0, 0.03, 1, 0.95]) 
+            messagebox.showinfo("Análisis Completo", f"Se han generado tres gráficos, incluyendo una predicción para {mes_futuro_nombre}.")
+            plt.show() 
+
+        except Exception as e:
+            messagebox.showerror("Error de Gráfico/Predicción", f"No se pudo generar el gráfico o el modelo: {e}")
+
+Pasos para la Implementación
+Instala Scikit-learn: pip install scikit-learn.
+
+Actualiza Imports: Asegúrate de que el inicio de tu cultivos.py tenga:
+
+# ...
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression 
+import numpy as np 
+# ...
+
+
+Reemplaza el Método: Copia el nuevo método analizar_ventas_externas y reemplaza la versión anterior en tu cultivos.py.
+
+Una vez que lo ejecutes y presiones "📈 Analizar Ventas Externas", verás una línea de tendencia en el segundo gráfico que se extiende al siguiente mes con la predicción.
+
+Ahora que tenemos la Predicción Simple lista, ¿pasamos a las Alarmas Inteligentes para configurar alertas basadas en el ciclo de vida de los cultivos?
+
+
+
+
+
 
