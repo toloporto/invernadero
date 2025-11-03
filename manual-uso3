@@ -69,3 +69,144 @@ Gráfico 1 (Barras): Muestra las Ventas Totales por Tipo de Producto para identi
 Gráfico 2 (Líneas): Muestra la Tendencia de Ventas a lo Largo del Tiempo (por Mes) para identificar estacionalidad o crecimiento.
 
 Siguiente paso: ¿Te gustaría que implementemos el Análisis de Ventas por Región para completar el análisis de los datos externos, o tienes alguna otra consulta sobre cómo usar las funciones existentes?
+
+
+analisis de ventas por region:
+Asistente de programación
+¡Qué fantástico plan! Tienes cuatro objetivos muy potentes que llevarán tu aplicación a un nivel superior.
+
+Para mantener un enfoque claro y garantizar la correcta implementación, te sugiero que abordemos estos puntos uno por uno.
+
+Propongo comenzar con el Análisis por Región, ya que es una extensión directa del código de análisis de datos que acabamos de integrar.
+
+🎯 Nuevo Objetivo: Análisis de Ventas por Región
+Vamos a modificar la función analizar_ventas_externas para:
+
+Agrupar las ventas por la columna 'Region' (Norte, Sur, Centro).
+
+Generar un tercer gráfico de barras que compare las ventas totales de cada región.
+
+Mostrar los tres gráficos (Producto, Temporal, y Región) en la misma ventana de Matplotlib usando subplots (tres gráficos en una sola figura).
+
+📝 Modificación en cultivos.py (Análisis por Región)
+Por favor, reemplaza el método analizar_ventas_externas completo en tu clase AppCultivos por el siguiente código.
+
+Asistente de programación
+¡Qué fantástico plan! Tienes cuatro objetivos muy potentes que llevarán tu aplicación a un nivel superior.
+
+Para mantener un enfoque claro y garantizar la correcta implementación, te sugiero que abordemos estos puntos uno por uno.
+
+Propongo comenzar con el Análisis por Región, ya que es una extensión directa del código de análisis de datos que acabamos de integrar.
+
+🎯 Nuevo Objetivo: Análisis de Ventas por Región
+Vamos a modificar la función analizar_ventas_externas para:
+
+Agrupar las ventas por la columna 'Region' (Norte, Sur, Centro).
+
+Generar un tercer gráfico de barras que compare las ventas totales de cada región.
+
+Mostrar los tres gráficos (Producto, Temporal, y Región) en la misma ventana de Matplotlib usando subplots (tres gráficos en una sola figura).
+
+📝 Modificación en cultivos.py (Análisis por Región)
+Por favor, reemplaza el método analizar_ventas_externas completo en tu clase AppCultivos por el siguiente código.
+
+He ajustado la estructura de Matplotlib para manejar tres subplots en una configuración de 1×3 (una fila, tres columnas).
+
+def analizar_ventas_externas(self):
+        """
+        Carga el archivo CSV externo, calcula métricas financieras, y genera tres gráficos:
+        Ventas por Producto, Tendencia Temporal, y Ventas por Región.
+        """
+        nombre_archivo = NOMBRE_ARCHIVO_VENTAS
+        
+        # 1. Carga de Datos y Manejo de Errores
+        if not os.path.exists(nombre_archivo):
+            messagebox.showwarning("Advertencia", 
+                                   f"No se encontró el archivo de ventas externas '{nombre_archivo}'.\n"
+                                   f"Asegúrate de que exista y se llame '{NOMBRE_ARCHIVO_VENTAS}'.")
+            return
+
+        try:
+            df = pd.read_csv(nombre_archivo, sep=',')
+        except pd.errors.ParserError:
+            messagebox.showerror("Error", "Error de formato en el CSV. ¿Es el delimitador correcto (coma)?")
+            return
+        except Exception as e:
+            messagebox.showerror("Error", f"Error inesperado al cargar los datos: {e}")
+            return
+
+        # 2. Preparación de Datos
+        df['Venta_Total'] = pd.to_numeric(df['Venta_Total'], errors='coerce')
+        df.dropna(subset=['Venta_Total'], inplace=True)
+        
+        if df.empty:
+            messagebox.showwarning("Advertencia", "El archivo de ventas está vacío o solo contiene encabezados válidos.")
+            return
+
+        # 3. Análisis Agrupado (Ventas por Producto)
+        ventas_por_producto = df.groupby('Producto')['Venta_Total'].sum().sort_values(ascending=False)
+        
+        # 4. Análisis Agrupado Temporal (Ventas por Mes)
+        mapa_meses = {'Ene': 1, 'Feb': 2, 'Mar': 3, 'Abr': 4, 'May': 5, 'Jun': 6, 
+                      'Jul': 7, 'Ago': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dic': 12}
+        df['Num_Mes'] = df['Mes'].map(mapa_meses)
+        ventas_por_mes = df.groupby(['Num_Mes', 'Mes'])['Venta_Total'].sum().reset_index(level=1).sort_values(by='Num_Mes')
+        
+        
+        # --- NUEVO: 5. Análisis Agrupado por Región ---
+        ventas_por_region = df.groupby('Region')['Venta_Total'].sum().sort_values(ascending=False)
+        
+        print("\n--- REPORTE DE VENTAS POR REGIÓN ---")
+        print(ventas_por_region.to_string())
+
+        
+        # --- 6. VISUALIZACIÓN DE DATOS con Matplotlib (Tres Subplots) ---
+        try:
+            plt.style.use('dark_background') 
+            # Creamos una figura con una fila y tres columnas para los gráficos
+            fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
+            fig.suptitle('Análisis Detallado de Ventas Externas (Producto, Temporal y Región)', color='white', fontsize=16)
+
+            
+            # --- Gráfico 1: Ventas por Producto (Barras) ---
+            ventas_por_producto.plot(kind='bar', color='#1E8449', ax=ax1) 
+            ax1.set_title('1. Ventas por Producto', color='white')
+            ax1.set_xlabel('Producto', color='white')
+            ax1.set_ylabel('Venta Total (€)', color='white')
+            ax1.tick_params(axis='x', rotation=45, colors='white')
+            ax1.tick_params(axis='y', colors='white')
+            ax1.grid(axis='y', linestyle='--', alpha=0.4) 
+            
+            # --- Gráfico 2: Ventas por Mes (Líneas) ---
+            ax2.plot(ventas_por_mes['Mes'], ventas_por_mes['Venta_Total'], 
+                     marker='o', linestyle='-', color='#007BFF', linewidth=3)
+            ax2.set_title('2. Tendencia Temporal (Mes)', color='white')
+            ax2.set_xlabel('Mes', color='white')
+            ax2.set_ylabel('Venta Total (€)', color='white')
+            ax2.tick_params(axis='x', rotation=0, colors='white')
+            ax2.tick_params(axis='y', colors='white')
+            ax2.grid(axis='both', linestyle='--', alpha=0.4) 
+            
+            # --- Gráfico 3: Ventas por Región (Barras) ---
+            ventas_por_region.plot(kind='bar', color='#FFC107', ax=ax3) 
+            ax3.set_title('3. Ventas por Región', color='white')
+            ax3.set_xlabel('Región', color='white')
+            ax3.set_ylabel('Venta Total (€)', color='white')
+            ax3.tick_params(axis='x', rotation=45, colors='white')
+            ax3.tick_params(axis='y', colors='white')
+            ax3.grid(axis='y', linestyle='--', alpha=0.4) 
+
+            
+            plt.tight_layout(rect=[0, 0.03, 1, 0.95]) 
+            messagebox.showinfo("Análisis Completo", "Se han generado TRES gráficos de análisis: Producto, Temporal y Región.")
+            plt.show() 
+
+        except Exception as e:
+            messagebox.showerror("Error de Gráfico", f"No se pudo generar el gráfico: {e}")
+
+Próximo Paso
+Una vez que reemplaces el código y ejecutes la aplicación, el botón "📈 Analizar Ventas Externas" te mostrará el reporte completo con los tres enfoques de análisis.
+
+¿Necesitas el código completo de cultivos.py con esta última modificación, o prefieres pasar directamente a la Predicción Simple (proyectar ventas futuras)?
+
+
