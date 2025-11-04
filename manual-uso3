@@ -2005,7 +2005,93 @@ Validación de Fechas
 Alerta de Proximidad de Cosecha (Visual)
 
 
+Asistente de programación
+¡Es una gran decisión! Desplegar tu aplicación web te permitirá acceder a ella desde cualquier lugar y compartir tu trabajo.
 
+Dado que tu aplicación está construida con Python/Flask (Backend) y HTML/CSS/JavaScript (Frontend), Heroku es la opción más sencilla y popular para desplegar aplicaciones basadas en Flask, ya que está diseñado para manejar aplicaciones en Python.
+
+Aquí tienes una guía paso a paso para preparar y desplegar tu aplicación en Heroku.
+
+🚀 Despliegue en Heroku (Aplicación Flask)
+Para que Heroku sepa cómo ejecutar tu aplicación Flask y qué paquetes necesita, debemos añadir dos archivos de configuración clave.
+
+1. 📂 Crear el Archivo Procfile
+Heroku necesita un archivo llamado Procfile (sin extensión) en la carpeta raíz de tu proyecto para saber qué comando ejecutar para iniciar el servidor web. Usaremos gunicorn, un servidor de aplicaciones web para Python, que es el estándar para Heroku.
+
+Crea un archivo llamado Procfile (P mayúscula) en la misma carpeta que app_backend.py y cultivos.json, y añade la siguiente línea:
+
+web: gunicorn app_backend:app
+Explicación:
+
+web: Indica a Heroku que este es el proceso principal del servidor web.
+
+gunicorn: El servidor de aplicaciones que ejecutará Flask.
+
+app_backend:app: Le dice a gunicorn que busque la instancia app (tu app = Flask(__name__)) dentro del archivo app_backend.py.
+
+2. 📋 Crear el Archivo requirements.txt
+Heroku necesita saber qué librerías instalar. Generaremos este archivo automáticamente basándonos en tu entorno de desarrollo.
+
+Asegúrate de que tu entorno virtual de Python esté activado, y luego ejecuta este comando en tu terminal, en la carpeta raíz del proyecto:
+
+Bash
+pip freeze > requirements.txt
+Esto creará un archivo requirements.txt con contenido similar a esto (la versión exacta puede variar):
+
+Plaintext
+Flask==3.0.0
+gunicorn==21.2.0
+python-dateutil==2.8.2
+Werkzeug==3.0.1
+# ... (otras dependencias)
+¡Atención! Si gunicorn no aparece, probablemente no lo has instalado. Instálalo ahora:
+
+Bash
+pip install gunicorn
+y luego vuelve a ejecutar pip freeze > requirements.txt.
+
+3. 📝 Configurar el Puerto de Flask (app_backend.py)
+Heroku asigna un puerto dinámico a tu aplicación. Tu script de Flask debe estar configurado para usar esa variable de entorno, o el despliegue fallará.
+
+Modifica el bloque de inicio de tu archivo app_backend.py (al final del archivo) para usar el puerto definido por Heroku, si existe:
+
+Python
+# app_backend.py (AL FINAL DEL ARCHIVO)
+
+if __name__ == '__main__':
+    # Usa el puerto definido por la variable de entorno PORT de Heroku, 
+    # o 5000 si se ejecuta localmente.
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
+Nota: Para que os.environ.get funcione, debes asegurarte de que importaste el módulo os al inicio de app_backend.py:
+
+Python
+import os # Asegúrate de que esta línea esté al principio
+from flask import Flask, request, jsonify, send_from_directory
+# ...
+✅ Resumen de Archivos Necesarios
+Tu carpeta de proyecto de Flask (Backend) ahora debe contener:
+
+app_backend.py
+
+cultivos.json
+
+Procfile (Nuevo)
+
+requirements.txt (Nuevo)
+
+app_frontend/ (Carpeta con index.html, scripts.js, etc.)
+
+⏭️ Siguiente Paso
+Una vez que hayas creado y verificado estos dos archivos de configuración (y modificado app_backend.py), el siguiente paso es subir tu proyecto a Git y GitHub (si aún no lo has hecho), y luego conectarlo a Heroku.
+
+¿Ya tienes tu proyecto de Flask y sus archivos de configuración subidos a un repositorio de GitHub, o necesitas ayuda con los comandos de Git?
+
+
+
+
+
+Gemini puede cometer errores, incluso sobre personas, así que verifica sus respuestas. Tu privacidad y Gemini
 
 
 
