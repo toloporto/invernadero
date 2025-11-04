@@ -1,0 +1,478 @@
+Quieres añadir una capa de seguridad a tu aplicación, específicamente un sistema básico de registro (signup) e inicio de sesión (login) para usuarios y contraseñas.
+
+Esta funcionalidad es una mejora significativa y debe implementarse en el Backend (Flask), ya que es donde residen la lógica y los datos.
+
+🚩 Desafío Principal: Seguridad y Persistencia
+Para que esto funcione correctamente, necesitamos realizar cambios en tres áreas de tu proyecto:
+
+Backend (app_backend.py): Crear nuevas rutas (/registro, /login) y lógica para manejar usuarios.
+
+Persistencia: Necesitamos guardar los usuarios de forma permanente, ¡así que usaremos el mismo Fly Volume! Crearemos un nuevo archivo de datos: usuarios.json.
+
+Frontend (index.html y scripts.js): Añadir un formulario de login/registro y lógica para enviar credenciales.
+
+Fase 1: Preparación del Backend (Persistencia y Lógica de Usuario)
+Vamos a empezar por el Backend, modificando app_backend.py para manejar un nuevo archivo de datos persistente.
+
+Paso 1: Modificar app_backend.py (Manejo de Usuarios)
+Abre tu archivo app_backend.py y añade las siguientes funciones y configuraciones antes de tus rutas de Flask.
+
+Código a Añadir/Modificar en app_backend.py:
+
+# app_backend.py (Cerca de la cima)
+import os
+import json
+import uuid
+# Nueva importación crucial para contraseñas seguras
+from werkzeug.security import generate_password_hash, check_password_hash 
+from flask import Flask, request, jsonify 
+from flask_cors import CORS
+
+# --- CONFIGURACIÓN DE PERSISTENCIA ---
+RUTA_DATOS_CULTIVOS = '/vol/data/cultivos.json' 
+# ¡Nueva ruta para los usuarios!
+RUTA_DATOS_USUARIOS = '/vol/data/usuarios.json' 
+
+app = Flask(__name__)
+CORS(app) 
+
+# Variables globales para los datos
+CULTIVOS = [] 
+USUARIOS = [] # Nueva variable global para usuarios
+
+# --- FUNCIONES DE MANEJO DE DATOS (USUARIOS) ---
+
+def cargar_usuarios():
+    """Carga los datos de usuarios del archivo JSON. Crea el archivo y directorio si no existen."""
+    global USUARIOS
+    data_dir = os.path.dirname(RUTA_DATOS_USUARIOS)
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir, exist_ok=True)
+        
+    if not os.path.exists(RUTA_DATOS_USUARIOS):
+        with open(RUTA_DATOS_USUARIOS, 'w', encoding='utf-8') as f:
+            json.dump([], f)
+        USUARIOS = []
+        return []
+    
+    try:
+        with open(RUTA_DATOS_USUARIOS, 'r', encoding='utf-8') as f:
+            USUARIOS = json.load(f)
+            return USUARIOS
+    except json.JSONDecodeError:
+        USUARIOS = []
+        return []
+
+def guardar_usuarios():
+    """Guarda la lista global USUARIOS en el archivo JSON persistente."""
+    try:
+        with open(RUTA_DATOS_USUARIOS, 'w', encoding='utf-8') as f:
+            json.dump(USUARIOS, f, indent=4)
+        return True
+    except Exception as e:
+        print(f"Error al guardar usuarios: {e}")
+        return False
+
+Paso 2: Añadir las Nuevas Rutas de Autenticación
+Añade estas dos nuevas rutas después de tus rutas existentes (/api/v1/cultivos):
+
+# app_backend.py (Nuevas Rutas de Autenticación)
+
+@app.route('/auth/registro', methods=['POST'])
+def registro():
+    """Ruta para registrar un nuevo usuario."""
+    data = request.get_json()
+    usuario = data.get('usuario')
+    contraseña = data.get('contraseña')
+
+    if not usuario or not contraseña:
+        return jsonify({"error": "Faltan usuario o contraseña"}), 400
+
+    # 1. Verificar si el usuario ya existe
+    if any(u['usuario'] == usuario for u in USUARIOS):
+        return jsonify({"error": "El usuario ya existe"}), 409 # 409 Conflict
+
+    # 2. Hashear la contraseña (Seguridad!)
+    hashed_password = generate_password_hash(contraseña)
+
+    # 3. Crear nuevo usuario y guardar
+    nuevo_usuario = {
+        'id': str(uuid.uuid4()),
+        'usuario': usuario,
+        'contraseña_hash': hashed_password # Guardar el hash, no la contraseña original
+    }
+    
+    USUARIOS.append(nuevo_usuario)
+    guardar_usuarios()
+    
+    return jsonify({"mensaje": f"Usuario {usuario} registrado con éxito"}), 201
+
+@app.route('/auth/login', methods=['POST'])
+def login():
+    """Ruta para iniciar sesión."""
+    data = request.get_json()
+    usuario = data.get('usuario')
+    contraseña = data.get('contraseña')
+
+    if not usuario or not contraseña:
+        return jsonify({"error": "Faltan usuario o contraseña"}), 400
+
+    # 1. Buscar usuario
+    user = next((u for u in USUARIOS if u['usuario'] == usuario), None)
+
+    if user:
+        # 2. Verificar la contraseña hasheada
+        if check_password_hash(user['contraseña_hash'], contraseña):
+            # En una aplicación real, se devolvería un token JWT aquí.
+            # Por ahora, solo confirmamos el éxito.
+            return jsonify({"mensaje": "Inicio de sesión exitoso", "usuario": usuario}), 200
+        else:
+            return jsonify({"error": "Contraseña incorrecta"}), 401 # 401 Unauthorized
+    else:
+        return jsonify({"error": "Usuario no encontrado"}), 404 # 404 Not Found
+
+
+Paso 3: Asegurar la Inicialización
+Asegúrate de que al final de app_backend.py, tanto la carga de cultivos como la de usuarios se realicen:
+
+# app_backend.py (Final del archivo)
+
+# Cargar los datos al iniciar la aplicación (se ejecutan al inicio de Gunicorn)
+cargar_cultivos() 
+cargar_usuarios() # ¡Añadir esta línea!
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
+
+
+Paso 4: Instalar Nueva Dependencia
+Tu Backend ahora usa werkzeug.security. Asegúrate de añadirla a tu archivo requirements.txt:
+
+# requirements.txt
+Flask
+flask-cors
+gunicorn
+werkzeug
+
+
+Fase 2: Despliegue del Backend
+Guarda los cambios en app_backend.py y requirements.txt.
+
+Sube los cambios e inicia el despliegue:
+
+git add .
+git commit -m "feat: Añadidas rutas de registro y login con persistencia y contraseñas hasheadas."
+git push
+flyctl deploy
+
+Una vez que el despliegue termine, la API estará lista para registrar usuarios.
+
+Ahora, procedemos al Frontend para crear los formularios de login/registro. ¿Te gustaría que te proporcione el HTML y el JavaScript necesarios para estos formularios?
+
+Vamos a crear la interfaz de usuario y la lógica de JavaScript para manejar el registro y el inicio de sesión.
+
+El objetivo es ocultar el Dashboard de gestión de cultivos (index.html) hasta que el usuario inicie sesión correctamente.
+
+🚩 Fase 3: Modificación del Frontend (HTML y JavaScript)
+1. Modificar index.html (Añadir la Interfaz de Autenticación)
+Abre tu archivo index.html y añade la siguiente estructura. La idea es tener un contenedor para el login que se muestre por defecto, y un contenedor para el dashboard que esté oculto.
+
+Busca el <main> o el contenedor principal de tu HTML y haz estos cambios:
+
+<body>
+
+    <div id="auth-container">
+        <h2>Bienvenido/a al Gestor de Cultivos</h2>
+        
+        <section class="form-section">
+            <h3>Iniciar Sesión</h3>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-usuario">Usuario:</label>
+                    <input type="text" id="login-usuario" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-contraseña">Contraseña:</label>
+                    <input type="password" id="login-contraseña" required>
+                </div>
+                <button type="submit" id="login-button">Acceder</button>
+            </form>
+        </section>
+
+        <hr>
+
+        <section class="form-section">
+            <h3>Registrarse (Primer Uso)</h3>
+            <form id="registro-form">
+                <div class="form-group">
+                    <label for="registro-usuario">Usuario:</label>
+                    <input type="text" id="registro-usuario" required>
+                </div>
+                <div class="form-group">
+                    <label for="registro-contraseña">Contraseña:</label>
+                    <input type="password" id="registro-contraseña" required>
+                </div>
+                <button type="submit" id="registro-button">Registrarme</button>
+            </form>
+        </section>
+        <p id="auth-message" style="color: red; margin-top: 10px;"></p>
+    </div>
+    
+    <div id="dashboard-container" style="display: none;">
+        
+        <header>...</header>
+        <main>
+            ... (Tu contenido existente del gestor de cultivos)
+        </main>
+        
+        <button id="logout-button" style="margin-top: 20px; float: right;">Cerrar Sesión</button>
+        
+    </div>
+    
+    <script src="scripts.js"></script>
+</body>
+
+
+Asistente de programación
+¡Absolutamente! Vamos a crear la interfaz de usuario y la lógica de JavaScript para manejar el registro y el inicio de sesión.
+
+El objetivo es ocultar el Dashboard de gestión de cultivos (index.html) hasta que el usuario inicie sesión correctamente.
+
+🚩 Fase 3: Modificación del Frontend (HTML y JavaScript)
+1. Modificar index.html (Añadir la Interfaz de Autenticación)
+Abre tu archivo index.html y añade la siguiente estructura. La idea es tener un contenedor para el login que se muestre por defecto, y un contenedor para el dashboard que esté oculto.
+
+Busca el <main> o el contenedor principal de tu HTML y haz estos cambios:
+
+HTML
+<body>
+
+    <div id="auth-container">
+        <h2>Bienvenido/a al Gestor de Cultivos</h2>
+        
+        <section class="form-section">
+            <h3>Iniciar Sesión</h3>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-usuario">Usuario:</label>
+                    <input type="text" id="login-usuario" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-contraseña">Contraseña:</label>
+                    <input type="password" id="login-contraseña" required>
+                </div>
+                <button type="submit" id="login-button">Acceder</button>
+            </form>
+        </section>
+
+        <hr>
+
+        <section class="form-section">
+            <h3>Registrarse (Primer Uso)</h3>
+            <form id="registro-form">
+                <div class="form-group">
+                    <label for="registro-usuario">Usuario:</label>
+                    <input type="text" id="registro-usuario" required>
+                </div>
+                <div class="form-group">
+                    <label for="registro-contraseña">Contraseña:</label>
+                    <input type="password" id="registro-contraseña" required>
+                </div>
+                <button type="submit" id="registro-button">Registrarme</button>
+            </form>
+        </section>
+        <p id="auth-message" style="color: red; margin-top: 10px;"></p>
+    </div>
+    
+    <div id="dashboard-container" style="display: none;">
+        
+        <header>...</header>
+        <main>
+            ... (Tu contenido existente del gestor de cultivos)
+        </main>
+        
+        <button id="logout-button" style="margin-top: 20px; float: right;">Cerrar Sesión</button>
+        
+    </div>
+    
+    <script src="scripts.js"></script>
+</body>
+2. Modificar scripts.js (Lógica de Autenticación)
+Abre tu archivo scripts.js y añade la siguiente lógica para manejar la autenticación. Deberás añadir las nuevas URLs de la API y las nuevas funciones.
+
+Código a Añadir en scripts.js:
+
+// scripts.js
+
+// --- CONFIGURACIÓN ---
+const API_BASE_URL = 'https://nombre-unico-de-tu-api-flask.fly.dev/api/v1/cultivos';
+
+// --- NUEVAS CONFIGURACIONES DE AUTENTICACIÓN ---
+const API_REGISTRO_URL = 'https://nombre-unico-de-tu-api-flask.fly.dev/auth/registro';
+const API_LOGIN_URL = 'https://nombre-unico-de-tu-api-flask.fly.dev/auth/login';
+
+// Elementos del DOM para autenticación
+const authContainer = document.getElementById('auth-container');
+const dashboardContainer = document.getElementById('dashboard-container');
+const loginForm = document.getElementById('login-form');
+const registroForm = document.getElementById('registro-form');
+const logoutButton = document.getElementById('logout-button');
+const authMessage = document.getElementById('auth-message');
+
+// Variable global para el estado de autenticación (NO USAMOS TOKENS POR SIMPLICIDAD)
+let IS_AUTHENTICATED = false;
+
+// ... (El resto de tus configuraciones y variables existentes) ...
+
+
+// --- NUEVAS FUNCIONES DE AUTENTICACIÓN ---
+
+/**
+ * Muestra u oculta los contenedores de Auth y Dashboard.
+ */
+function toggleInterface(isAuthenticated) {
+    if (isAuthenticated) {
+        authContainer.style.display = 'none';
+        dashboardContainer.style.display = 'block';
+        // Una vez dentro, cargamos los datos
+        cargarCultivos(); 
+    } else {
+        authContainer.style.display = 'block';
+        dashboardContainer.style.display = 'none';
+    }
+}
+
+/**
+ * Intenta registrar un nuevo usuario.
+ */
+async function manejarRegistro(event) {
+    event.preventDefault();
+    authMessage.textContent = ''; 
+
+    const usuario = document.getElementById('registro-usuario').value;
+    const contraseña = document.getElementById('registro-contraseña').value;
+
+    try {
+        const response = await fetch(API_REGISTRO_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuario, contraseña }),
+        });
+
+        const resultado = await response.json();
+
+        if (response.ok) {
+            authMessage.textContent = resultado.mensaje;
+            authMessage.style.color = 'var(--color-primary)';
+            registroForm.reset();
+        } else {
+            authMessage.textContent = `❌ Error: ${resultado.error || 'Fallo en el registro'}`;
+            authMessage.style.color = 'var(--color-danger)';
+        }
+    } catch (error) {
+        authMessage.textContent = '❌ Error de conexión al registrar.';
+        authMessage.style.color = 'var(--color-danger)';
+    }
+}
+
+/**
+ * Intenta iniciar sesión.
+ */
+async function manejarLogin(event) {
+    event.preventDefault();
+    authMessage.textContent = ''; 
+    
+    const usuario = document.getElementById('login-usuario').value;
+    const contraseña = document.getElementById('login-contraseña').value;
+
+    try {
+        const response = await fetch(API_LOGIN_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuario, contraseña }),
+        });
+
+        const resultado = await response.json();
+
+        if (response.ok) {
+            // Éxito en el login
+            IS_AUTHENTICATED = true;
+            toggleInterface(true);
+        } else {
+            authMessage.textContent = `❌ Error: ${resultado.error || 'Fallo en la autenticación'}`;
+            authMessage.style.color = 'var(--color-danger)';
+        }
+    } catch (error) {
+        authMessage.textContent = '❌ Error de conexión al intentar iniciar sesión.';
+        authMessage.style.color = 'var(--color-danger)';
+    }
+}
+
+/**
+ * Cierra la sesión y vuelve a la pantalla de login.
+ */
+function cerrarSesion() {
+    IS_AUTHENTICATED = false;
+    toggleInterface(false);
+    alert('Sesión cerrada.');
+    // Limpiar el formulario de login/registro si es necesario
+    document.getElementById('login-form').reset();
+}
+
+
+// --- MODIFICACIÓN DE LA INICIALIZACIÓN ---
+
+// Reemplaza o modifica la sección de inicialización 'DOMContentLoaded'
+document.addEventListener('DOMContentLoaded', () => {
+    // Inicialmente, mostramos la interfaz de login
+    toggleInterface(false); 
+    
+    // Asignar manejadores de eventos a los formularios de Auth
+    loginForm.addEventListener('submit', manejarLogin);
+    registroForm.addEventListener('submit', manejarRegistro);
+    logoutButton.addEventListener('click', cerrarSesion);
+
+    // NOTA: La función cargarCultivos() ahora se llama *dentro* de toggleInterface(true)
+    // después de un inicio de sesión exitoso.
+
+    // ... (El resto de tus event listeners existentes deben estar aquí, si los tienes)
+});
+
+// Asegúrate de que TODAS tus funciones CRUD (cargarCultivos, manejarEnvioFormulario, eliminarCultivo)
+// sigan usando 'API_BASE_URL' para acceder a los datos de cultivos.
+
+Pasos Finales de Despliegue
+Guarda los cambios en tu index.html.
+
+Guarda los cambios en tu scripts.js.
+
+Sube a GitHub:
+
+git add index.html scripts.js 
+git commit -m "feat: Añadida interfaz de login/registro y lógica de autenticación."
+git push
+
+Vercel Despliega Automáticamente: Vercel tomará los cambios y actualizará tu Dashboard en https://ventasinvernadero.vercel.app/.
+
+Una vez que Vercel termine, al acceder a tu URL, solo verás los formularios de Registro/Login.
+
+Prueba:
+
+Regístrate con un nuevo usuario y contraseña.
+
+Inicia sesión con ese mismo usuario.
+
+Si es exitoso, ¡deberías ver tu Dashboard de Cultivos!
+
+
+
+
+
+
+
+
+
+
+
+
+        
