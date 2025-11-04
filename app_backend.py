@@ -1,241 +1,113 @@
-# app_backend.py
-
-# --- CORRECCIÓN DE IMPORTACIÓN y ADICIÓN DE CORS ---
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-import json
 import os
-from datetime import datetime
+import json # Asegúrate de tener estas importaciones si tu código las usa
+import uuid
+import datetime
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
-# --- CONFIGURACIÓN ---
-NOMBRE_ARCHIVO_CULTIVOS = "cultivos.json"
+# --- CONFIGURACIÓN DE PERSISTENCIA ---
+# ¡Ruta modificada para usar el Volume persistente de Fly.io!
+RUTA_DATOS = '/vol/data/cultivos.json' 
 
-# Inicialización de la aplicación Flask
 app = Flask(__name__)
-
-# Aplicar CORS a todas las rutas. ES CRUCIAL para que el frontend HTML/JS pueda acceder.
 CORS(app) 
 
-# --- FUNCIONES DE MANEJO DE ARCHIVOS ---
+# Variable global para almacenar los datos en memoria al inicio.
+CULTIVOS = [] 
 
-def cargar_datos_cultivos():
-    """Lee el archivo JSON de cultivos. Si no existe, devuelve una lista vacía."""
-    if not os.path.exists(NOMBRE_ARCHIVO_CULTIVOS):
+# --- FUNCIONES DE MANEJO DE DATOS ---
+
+def cargar_cultivos():
+    """Carga los datos del archivo JSON. Crea el archivo y directorio si no existen."""
+    global CULTIVOS
+    
+    # 1. Asegurar que el directorio del volumen existe
+    data_dir = os.path.dirname(RUTA_DATOS)
+    if not os.path.exists(data_dir):
+        # En el primer inicio, /vol/data puede no existir, lo creamos de forma segura.
+        os.makedirs(data_dir, exist_ok=True)
+        
+    # 2. Inicializar el archivo JSON si no existe
+    if not os.path.exists(RUTA_DATOS):
+        # Escribimos una lista JSON vacía para evitar JSONDecodeError al inicio
+        with open(RUTA_DATOS, 'w', encoding='utf-8') as f:
+            json.dump([], f)
+        CULTIVOS = []
         return []
+    
+    # 3. Cargar los datos existentes
     try:
-        with open(NOMBRE_ARCHIVO_CULTIVOS, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error al cargar datos JSON: {e}")
+        with open(RUTA_DATOS, 'r', encoding='utf-8') as f:
+            CULTIVOS = json.load(f)
+            return CULTIVOS
+    except json.JSONDecodeError:
+        # Maneja el caso de un archivo vacío o corrupto
+        CULTIVOS = []
         return []
 
-def guardar_datos_cultivos(cultivos_lista):
-    """Escribe la lista de cultivos actualizada en el archivo JSON."""
+def guardar_cultivos():
+    """Guarda la lista global CULTIVOS en el archivo JSON persistente."""
     try:
-        with open(NOMBRE_ARCHIVO_CULTIVOS, "w") as f:
-            # Usamos indent=4 para que el JSON sea legible
-            json.dump(cultivos_lista, f, indent=4)
+        with open(RUTA_DATOS, 'w', encoding='utf-8') as f:
+            json.dump(CULTIVOS, f, indent=4)
         return True
     except Exception as e:
-        print(f"Error al guardar datos JSON: {e}")
+        print(f"Error al guardar datos: {e}")
         return False
 
-# --- RUTAS DE LA API (Endpoints) ---
-
-@app.route('/', methods=['GET'])
-def index():
-    """Ruta de bienvenida/prueba, lista todos los endpoints CRUD."""
-    return jsonify({
-        "status": "ok",
-        "mensaje": "Servidor de Asistente de Cultivos (API) activo.",
-        "endpoints_disponibles": {
-            "/api/v1/cultivos (GET)": "Obtiene todos los cultivos",
-            "/api/v1/cultivos (POST)": "Agrega un nuevo cultivo",
-            "/api/v1/cultivos/<nombre> (DELETE)": "Elimina un cultivo por nombre",
-            "/api/v1/cultivos/<nombre> (PUT)": "Actualiza completamente un cultivo por nombre"
-        }
-    })
-
+# --- RUTAS (ENDPOINTS) DE LA API ---
 
 @app.route('/api/v1/cultivos', methods=['GET'])
-def obtener_cultivos():
-    """
-    Endpoint para obtener la lista completa de cultivos, calculando los días restantes.
-    """
-    cultivos = cargar_datos_cultivos()
-    
-    hoy = datetime.now().date()
-    
-    for cultivo in cultivos:
-        try:
-            # Se asume que la fecha está en formato ISO (YYYY-MM-DD)
-            fecha_cosecha = datetime.strptime(cultivo["fecha_cosecha"], '%Y-%m-%d').date()
-            dias_restantes = (fecha_cosecha - hoy).days
-            
-            # Cálculo de estado para el JSON
-            if dias_restantes < 0:
-                cultivo['dias_restantes'] = f"Cosechado hace {abs(dias_restantes)} días"
-            elif dias_restantes == 0:
-                cultivo['dias_restantes'] = "¡COSECHA HOY!"
-            else:
-                cultivo['dias_restantes'] = f"{dias_restantes} días"
-                
-        except (ValueError, KeyError):
-            cultivo['dias_restantes'] = "Fecha no válida"
-            
-    return jsonify(cultivos)
-
+def listar_cultivos():
+    """GET: Lista todos los cultivos."""
+    return jsonify(CULTIVOS)
 
 @app.route('/api/v1/cultivos', methods=['POST'])
 def agregar_cultivo():
-    """
-    Endpoint para agregar un nuevo cultivo a la base de datos (cultivos.json).
-    """
-    if not request.is_json:
-        return jsonify({"error": "Falta el cuerpo de la petición (JSON)."}), 400
-
-    datos_cultivo = request.json
-    
-    # 1. Validación Básica de Campos Requeridos
-    campos_requeridos = ["nombre", "fecha_siembra", "fecha_cosecha"]
-    for campo in campos_requeridos:
-        if campo not in datos_cultivo:
-            return jsonify({"error": f"Falta el campo requerido: {campo}"}), 400
-            
-    # 2. Convertir y validar fechas
+    """POST: Agrega un nuevo cultivo."""
     try:
-        datetime.strptime(datos_cultivo["fecha_siembra"], '%Y-%m-%d')
-        datetime.strptime(datos_cultivo["fecha_cosecha"], '%Y-%m-%d')
-    except ValueError:
-        return jsonify({"error": "Formato de fecha inválido. Use YYYY-MM-DD (ej: 2026-03-20)."}), 400
-
-    # 3. Preparar el nuevo objeto
-    try:
-        nuevo_cultivo = {
-            "nombre": datos_cultivo["nombre"],
-            "fecha_siembra": datos_cultivo["fecha_siembra"],
-            "fecha_cosecha": datos_cultivo["fecha_cosecha"],
-            "notas": datos_cultivo.get("notas", ""),
-            "zona": datos_cultivo.get("zona", ""),
-            "precio_compra": float(datos_cultivo.get("precio_compra", 0.0)),
-            "precio_venta": float(datos_cultivo.get("precio_venta", 0.0)),
-            "dias_alerta": int(datos_cultivo.get("dias_alerta", 0))
-        }
-    except ValueError:
-        return jsonify({"error": "Los campos numéricos (precios, alerta) deben ser números válidos."}), 400
-    
-    # 4. Cargar, Añadir y Guardar
-    cultivos = cargar_datos_cultivos()
-    cultivos.append(nuevo_cultivo)
-    
-    if guardar_datos_cultivos(cultivos):
-        return jsonify({
-            "status": "success",
-            "mensaje": f"Cultivo '{nuevo_cultivo['nombre']}' añadido correctamente.",
-            "cultivo_agregado": nuevo_cultivo
-        }), 201  # Código 201 Created
-    else:
-        return jsonify({"error": "Error interno del servidor al guardar el archivo JSON."}), 500
-
-
-@app.route('/api/v1/cultivos/<string:nombre_cultivo>', methods=['PUT'])
-def actualizar_cultivo(nombre_cultivo):
-    """
-    Endpoint para actualizar completamente un cultivo específico por su nombre.
-    """
-    if not request.is_json:
-        return jsonify({"error": "Falta el cuerpo de la petición (JSON)."}), 400
-
-    cultivos = cargar_datos_cultivos()
-    nombre_cultivo_lower = nombre_cultivo.lower()
-    datos_actualizados = request.json
-    
-    # 1. Buscar el índice del cultivo a actualizar
-    indice_a_actualizar = -1
-    for i, cultivo in enumerate(cultivos):
-        if cultivo.get("nombre", "").lower() == nombre_cultivo_lower:
-            indice_a_actualizar = i
-            break
-            
-    if indice_a_actualizar == -1:
-        return jsonify({"error": f"Cultivo '{nombre_cultivo}' no encontrado."}), 404
-
-    cultivo_existente = cultivos[indice_a_actualizar]
-    
-    # 2. Validar tipos de datos y obtener valores, usando los existentes como fallback
-    try:
-        fecha_siembra = datos_actualizados.get("fecha_siembra", cultivo_existente.get("fecha_siembra"))
-        fecha_cosecha = datos_actualizados.get("fecha_cosecha", cultivo_existente.get("fecha_cosecha"))
+        data = request.get_json()
+        #if not all(k in data for k in ('nombre', 'tipo', 'fecha_plantacion')):
+            #return jsonify({"error": "Faltan campos requeridos"}), 400
+        # Validar los campos esenciales de tu formulario
+        if not all(k in data for k in ('nombre', 'fecha_siembra', 'fecha_cosecha')):
+            return jsonify({"error": "Faltan campos requeridos (nombre, fecha_siembra, fecha_cosecha)"}), 400
+        # Validación básica de existencia (opcional, si el frontend no valida)
+        if any(c['nombre'] == data['nombre'] for c in CULTIVOS):
+            return jsonify({"error": "El cultivo ya existe."}), 409
         
-        if fecha_siembra:
-            datetime.strptime(fecha_siembra, '%Y-%m-%d')
-        if fecha_cosecha:
-            datetime.strptime(fecha_cosecha, '%Y-%m-%d')
-            
-        precio_compra = float(datos_actualizados.get("precio_compra", cultivo_existente.get("precio_compra", 0.0)))
-        precio_venta = float(datos_actualizados.get("precio_venta", cultivo_existente.get("precio_venta", 0.0)))
-        dias_alerta = int(datos_actualizados.get("dias_alerta", cultivo_existente.get("dias_alerta", 0)))
+        # Asignar ID único
+        nuevo_cultivo = data
+        nuevo_cultivo['id'] = str(uuid.uuid4())
+        
+        CULTIVOS.append(nuevo_cultivo)
+        guardar_cultivos() # Guardar el cambio en el volumen persistente
+        
+        return jsonify(nuevo_cultivo), 201
+    except Exception as e:
+        # Este error es solo para fines de depuración; en producción, usa un mensaje genérico.
+        return jsonify({"error": f"Error interno al agregar: {str(e)}"}), 500
 
-    except ValueError:
-        return jsonify({"error": "Formato de fecha o valor numérico inválido."}), 400
-
-    # 3. Actualizar el objeto con los nuevos datos
-    cultivo_existente.update({
-        "nombre": datos_actualizados.get("nombre", cultivo_existente.get("nombre")),
-        "fecha_siembra": fecha_siembra,
-        "fecha_cosecha": fecha_cosecha,
-        "notas": datos_actualizados.get("notas", cultivo_existente.get("notas", "")),
-        "zona": datos_actualizados.get("zona", cultivo_existente.get("zona", "")),
-        "precio_compra": precio_compra,
-        "precio_venta": precio_venta,
-        "dias_alerta": dias_alerta
-    })
-
-    # 4. Guardar la lista actualizada
-    if guardar_datos_cultivos(cultivos):
-        return jsonify({
-            "status": "success",
-            "mensaje": f"Cultivo '{nombre_cultivo}' actualizado correctamente.",
-            "cultivo_actualizado": cultivo_existente
-        }), 200
-    else:
-        return jsonify({"error": "Error interno del servidor al guardar el archivo."}), 500
-
-
-@app.route('/api/v1/cultivos/<string:nombre_cultivo>', methods=['DELETE'])
-def eliminar_cultivo(nombre_cultivo):
-    """
-    Endpoint para eliminar un cultivo específico por su nombre.
-    """
-    cultivos = cargar_datos_cultivos()
-    nombre_cultivo_lower = nombre_cultivo.lower()
+@app.route('/api/v1/cultivos/<id_cultivo>', methods=['DELETE'])
+def eliminar_cultivo(id_cultivo):
+    """DELETE: Elimina un cultivo por ID."""
+    global CULTIVOS
     
-    # 1. Buscar el índice del cultivo a eliminar
-    indice_a_eliminar = -1
-    for i, cultivo in enumerate(cultivos):
-        if cultivo.get("nombre", "").lower() == nombre_cultivo_lower:
-            indice_a_eliminar = i
-            break
-            
-    if indice_a_eliminar == -1:
-        return jsonify({"error": f"Cultivo '{nombre_cultivo}' no encontrado."}), 404
-
-    # 2. Eliminar el cultivo de la lista
-    nombre_eliminado = cultivos[indice_a_eliminar]["nombre"]
-    del cultivos[indice_a_eliminar]
+    cultivos_antes = len(CULTIVOS)
+    # Filtramos la lista, manteniendo solo los que NO coinciden con el ID
+    CULTIVOS = [c for c in CULTIVOS if c.get('id') != id_cultivo]
     
-    # 3. Guardar la lista actualizada
-    if guardar_datos_cultivos(cultivos):
-        return jsonify({
-            "status": "success",
-            "mensaje": f"Cultivo '{nombre_eliminado}' eliminado correctamente."
-        }), 200
+    if len(CULTIVOS) < cultivos_antes:
+        guardar_cultivos() # Guardar el cambio en el volumen persistente
+        return jsonify({"mensaje": f"Cultivo {id_cultivo} eliminado"}), 200
     else:
-        return jsonify({"error": "Error interno del servidor al guardar el archivo."}), 500
+        return jsonify({"error": "Cultivo no encontrado"}), 404
 
+# --- INICIALIZACIÓN ---
 
-# --- INICIO DEL SERVIDOR ---
+# Cargar los datos al iniciar la aplicación (usa la lógica de persistencia)
+cargar_cultivos()
+
 if __name__ == '__main__':
-    # Se ejecutará en http://127.0.0.1:5000/
-    print("Iniciando servidor Flask...")
-    app.run(debug=True)
+    # Esto es solo para ejecución local
+    app.run(debug=True, host='0.0.0.0', port=5000)
