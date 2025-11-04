@@ -1,0 +1,37 @@
+
+¡Claro! Con gusto te proporciono la estructura de carpetas que hemos estado manejando a lo largo de este proceso de despliegue, incluyendo los archivos esenciales que conforman tu aplicación de dos partes (Frontend en Vercel y Backend en Fly.io).
+
+Esta estructura es clave para que tanto Git como las plataformas Vercel y Fly.io sepan dónde encontrar los archivos correctos.
+
+📁 Estructura Completa de la Aplicación
+Tu proyecto reside en una única carpeta raíz (que llamaremos ventas o el nombre de tu repositorio), y contiene los archivos de configuración y los dos componentes principales 
+(Frontend y Backend).
+
+ventas/
+├── .gitignore
+├── fly.toml               # Configuración del Backend para Fly.io
+├── gunicorn_config.py     # Configuración del servidor de producción Python
+├── requirements.txt       # Dependencias de Python para el Backend
+├── Procfile               # (Opcional, pero útil) Define cómo ejecutar la app
+
+├── app_backend.py         # 🐍 CÓDIGO DEL BACKEND (Flask API)
+|
+├── index.html             # 🌐 FRONTEND: La interfaz principal (incluye Auth y Dashboard)
+├── scripts.js             # 🌐 FRONTEND: Lógica JS para Auth y CRUD de Cultivos
+├── styles.css             # 🌐 FRONTEND: Estilos CSS
+├── cultivos.json          # 💾 Archivo de datos LOCAL (Usado solo como inicializador)
+
+Descripción de los Archivos Clave
+
+Carpeta/Archivo,Componente,Plataforma,Propósito
+app_backend.py,Backend (API),Fly.io,"Contiene el código Flask, las rutas (GET, POST, DELETE, Auth) y la lógica de persistencia de datos (con RUTA_DATOS = '/vol/data/...')."
+requirements.txt,Backend,Fly.io,"Lista las bibliotecas de Python necesarias (Flask, flask-cors, gunicorn, werkzeug)."
+fly.toml,Backend,Fly.io,"Define la configuración del servidor, puertos, y lo más importante: el montaje del Fly Volume para la persistencia de datos."
+index.html,Frontend (Dashboard),Vercel,"La estructura HTML principal, incluyendo los formularios de Login/Registro y el Dashboard de Cultivos."
+scripts.js,Frontend,Vercel,"La lógica JavaScript para manejar el flujo de autenticación, el envío de datos a tu API de Fly.io, y el renderizado de la tabla."
+styles.css,Frontend,Vercel,Hoja de estilos de tu aplicación web.
+cultivos.json,Datos,Fly.io/Local,"El archivo JSON que contiene los datos de prueba iniciales. Una vez en Fly.io, los datos se guardan en el disco persistente."
+
+
+Para que todo siga funcionando, es vital que los archivos index.html, scripts.js, y styles.css estén en la raíz de tu repositorio (la carpeta ventas/). Si estuvieran dentro de una subcarpeta, la configuración de Vercel (Root Directory) tendría que ajustarse.
+
