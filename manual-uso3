@@ -1608,6 +1608,141 @@ Si todo está correcto, deberías ver la interfaz web cargarse, y la tabla se po
 ¡El sistema de gestión de cultivos ya es una aplicación completa, incluyendo GUI de escritorio y una interfaz web conectada a una API!
 
 
+Basado en la estructura actual de tu aplicación (Backend Flask/JSON y Frontend HTML/JS), propongo la siguiente mejora funcional y de usabilidad:
+
+Próxima Mejora: Búsqueda y Filtrado Dinámico de Cultivos (Frontend)
+Actualmente, si la lista de cultivos crece, el usuario tendría dificultades para encontrar un elemento específico. Vamos a añadir una barra de búsqueda en el frontend que filtre la tabla en tiempo real por Nombre, Zona o Notas, sin necesidad de llamar a la API nuevamente.
+
+Esto es un ejercicio excelente de manipulación de DOM con JavaScript.
+
+📝 Modificación del HTML (index.html)
+Añade un campo de búsqueda justo encima de la tabla de cultivos.
+
+Busca la sección <section class="card" id="list-section"> y agrega el siguiente div después del <h2>:
+
+<section class="card" id="list-section">
+    <h2>🗓 Mis Cultivos</h2>
+    
+    <div id="search-container">
+        <label for="cultivoSearch">🔍 Buscar Cultivo:</label>
+        <input type="text" id="cultivoSearch" placeholder="Escribe nombre, zona o nota para filtrar...">
+    </div>
+    <p id="loading-message">Cargando datos de la API...</p>
+
+    </section>
+
+🎨 Modificación del CSS (styles.css)
+Añade estilos simples para la nueva barra de búsqueda:
+
+/* styles.css (Añadir al final del archivo) */
+
+/* Estilos para el contenedor de búsqueda */
+#search-container {
+    padding: 10px 0;
+    border-top: 1px solid #444;
+}
+
+#cultivoSearch {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    box-sizing: border-box;
+    border: 1px solid #555;
+    background-color: #383838;
+    color: var(--color-text);
+    border-radius: 4px;
+}
+
+💻 Modificación del JavaScript (scripts.js)
+Aquí está la lógica principal. Necesitamos: a. Almacenar los datos de los cultivos globalmente. b. Una función para filtrar la tabla basándose en el texto de búsqueda. c. Un event listener para detectar cuando el usuario escribe.
+
+Abre scripts.js y haz los siguientes cambios:
+
+A. Variables Globales (cerca de la línea 5)
+Añade una variable global para guardar los datos cargados:
+
+// scripts.js (cerca de la línea 5)
+
+// --- CONFIGURACIÓN ---
+// ... (otras variables) ...
+const searchInput = document.getElementById('cultivoSearch'); // <-- NUEVO
+const loadingMessage = document.getElementById('loading-message');
+
+let modoEdicion = false; 
+let cultivosData = []; // <-- NUEVO: Almacenar los datos cargados
+. Modificación de cargarCultivos (cerca de la línea 15)
+Modifica esta función para guardar los datos globalmente antes de renderizar
+// scripts.js (Modificación de cargarCultivos)
+
+async function cargarCultivos() {
+    loadingMessage.textContent = 'Cargando datos de la API...';
+    try {
+        const response = await fetch(API_BASE_URL);
+        const cultivos = await response.json();
+        
+        cultivosData = cultivos; // <-- GUARDAR los datos globalmente
+        
+        loadingMessage.style.display = 'none';
+        renderizarTabla(cultivosData); // Renderizar todos al inicio
+
+    } catch (error) {
+        // ... (resto de manejo de error) ...
+    }
+}
+
+Nueva Función de Filtrado
+Añade esta función que filtra cultivosData y re-renderiza la tabla:
+
+// scripts.js (Añadir la nueva función, por ejemplo, después de manejarEnvioFormulario)
+
+/**
+ * Filtra los cultivos mostrados en la tabla basándose en el texto de búsqueda.
+ */
+function filtrarCultivos() {
+    const textoBusqueda = searchInput.value.toLowerCase().trim();
+    
+    if (textoBusqueda === '') {
+        // Si no hay texto, mostrar todo
+        renderizarTabla(cultivosData);
+        return;
+    }
+    
+    const cultivosFiltrados = cultivosData.filter(cultivo => {
+        // Concatenar campos relevantes y buscar el texto en ellos
+        const contenido = (
+            cultivo.nombre + 
+            cultivo.zona + 
+            cultivo.notas + 
+            cultivo.fecha_cosecha
+        ).toLowerCase();
+        
+        return contenido.includes(textoBusqueda);
+    });
+    
+    renderizarTabla(cultivosFiltrados);
+}
+
+Inicialización (cerca de la línea 200)
+Añade el event listener para que el filtrado se ejecute cada vez que el usuario escribe:
+
+// scripts.js (Añadir a la sección de inicialización)
+
+// ... (resto de la inicialización) ...
+
+// Escucha el evento 'input' en la barra de búsqueda para filtrar dinámicamente
+searchInput.addEventListener('input', filtrarCultivos); // <-- NUEVO
+
+// Carga los cultivos al iniciar la página
+document.addEventListener('DOMContentLoaded', cargarCultivos);
+
+Próximo Paso
+Guarda los tres archivos (index.html, styles.css, scripts.js).
+
+Asegúrate de que Flask esté corriendo.
+
+Recarga tu index.html en el navegador.
+
+Ahora deberías tener una barra de búsqueda funcional. Una vez que verifiques que el filtro funciona, ¿quieres que abordemos la validación de fechas en el frontend (por ejemplo, evitar que la fecha de cosecha sea anterior a la de siembra) como otra mejora de usabilidad?
 
 
 
