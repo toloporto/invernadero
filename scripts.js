@@ -15,7 +15,7 @@ let cultivosData = [];
 // --- FUNCIONES DE MANEJO DE LA API (CRUD) ---
 
 /**
- * 1. GET (Leer): Carga y renderiza todos los cultivos.
+ * 1. GET (Leer): Carga, procesa y renderiza todos los cultivos.
  */
 async function cargarCultivos() {
     loadingMessage.textContent = 'Cargando datos de la API...';
@@ -27,6 +27,8 @@ async function cargarCultivos() {
         
         loadingMessage.style.display = 'none'; 
         renderizarTabla(cultivosData); 
+        
+        actualizarKpis(cultivosData); // Actualiza los KPIs después de la carga
 
     } catch (error) {
         console.error('Error al cargar cultivos:', error);
@@ -48,20 +50,16 @@ async function manejarEnvioFormulario(event) {
         return;
     }
     
-    // -----------------------------------------------------------------
-    //  VALIDACIÓN DE FECHAS (Frontend)
-    // -----------------------------------------------------------------
+    // VALIDACIÓN DE FECHAS (Frontend)
     if (!validarFechas(datosCultivo.fecha_siembra, datosCultivo.fecha_cosecha)) {
         alert('❌ Error: La fecha de cosecha no puede ser anterior a la fecha de siembra.');
         return; 
     }
-    // -----------------------------------------------------------------
 
     const nombreOriginal = originalNameInput.value;
     let url = API_BASE_URL;
     let method = 'POST';
     
-    // Si estamos en modo edición
     if (modoEdicion) {
         url = `${API_BASE_URL}/${nombreOriginal}`;
         method = 'PUT';
@@ -143,12 +141,35 @@ function filtrarCultivos() {
     renderizarTabla(cultivosFiltrados);
 }
 
+/**
+ * 5. KPIs: Calcula y actualiza los KPIs financieros.
+ */
+function actualizarKpis(cultivos) {
+    let costoTotal = 0;
+    let ventaTotal = 0;
+
+    cultivos.forEach(cultivo => {
+        costoTotal += parseFloat(cultivo.precio_compra) || 0;
+        ventaTotal += parseFloat(cultivo.precio_venta) || 0;
+    });
+    
+    const gananciaPotencial = ventaTotal - costoTotal;
+
+    // Actualizar los elementos del DOM
+    document.getElementById('kpiCosto').textContent = `€${costoTotal.toFixed(2)}`;
+    document.getElementById('kpiVenta').textContent = `€${ventaTotal.toFixed(2)}`;
+    document.getElementById('kpiGanancia').textContent = `€${gananciaPotencial.toFixed(2)}`;
+    
+    // Estilo condicional para la ganancia
+    const gananciaElement = document.getElementById('kpiGanancia');
+    gananciaElement.style.color = gananciaPotencial >= 0 ? 'var(--color-primary)' : 'var(--color-danger)';
+}
+
 
 // --- FUNCIONES DE UTILIDAD Y RENDERIZADO ---
 
 /**
  * Valida que la fecha de cosecha sea posterior o igual a la fecha de siembra.
- * @returns {boolean} True si las fechas son válidas, false si no.
  */
 function validarFechas(siembraStr, cosechaStr) {
     const siembra = Date.parse(siembraStr);
@@ -194,15 +215,24 @@ function renderizarTabla(cultivos) {
     cultivos.forEach(cultivo => {
         const row = tableBody.insertRow();
         let claseCosecha = 'cosecha-futura';
+        let isAlert = false;
         
+        // Clases para estado de cosecha
         if (cultivo.dias_restantes && cultivo.dias_restantes.includes('COSECHA HOY')) {
             claseCosecha = 'cosecha-hoy';
         } else if (cultivo.dias_restantes && cultivo.dias_restantes.includes('Cosechado hace')) {
             claseCosecha = 'cosecha-pasada';
         }
         
+        // LÓGICA DE ALERTA DE PROXIMIDAD
+        const dias = parseInt(cultivo.dias_restantes);
+        if (!isNaN(dias) && dias > 0 && dias <= cultivo.dias_alerta) {
+            isAlert = true;
+        }
+        
         const margen = (cultivo.precio_venta - cultivo.precio_compra).toFixed(2);
         
+        // Renderizado de celdas
         row.insertCell().textContent = cultivo.nombre;
         row.insertCell().textContent = cultivo.zona;
         row.insertCell().textContent = cultivo.fecha_siembra;
@@ -214,6 +244,12 @@ function renderizarTabla(cultivos) {
         
         row.insertCell().textContent = `€${margen}`;
 
+        // Aplicar clase de alerta a la fila
+        if (isAlert) {
+            row.classList.add('fila-alerta');
+        }
+
+        // Celda de Acciones (Botones)
         const cellAcciones = row.insertCell();
         cellAcciones.classList.add('action-buttons');
         
