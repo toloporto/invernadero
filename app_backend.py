@@ -1,6 +1,8 @@
 # app_backend.py
 
+# --- CORRECCIÓN DE IMPORTACIÓN y ADICIÓN DE CORS ---
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 import json
 import os
 from datetime import datetime
@@ -10,6 +12,9 @@ NOMBRE_ARCHIVO_CULTIVOS = "cultivos.json"
 
 # Inicialización de la aplicación Flask
 app = Flask(__name__)
+
+# Aplicar CORS a todas las rutas. ES CRUCIAL para que el frontend HTML/JS pueda acceder.
+CORS(app) 
 
 # --- FUNCIONES DE MANEJO DE ARCHIVOS ---
 
@@ -63,6 +68,7 @@ def obtener_cultivos():
     
     for cultivo in cultivos:
         try:
+            # Se asume que la fecha está en formato ISO (YYYY-MM-DD)
             fecha_cosecha = datetime.strptime(cultivo["fecha_cosecha"], '%Y-%m-%d').date()
             dias_restantes = (fecha_cosecha - hoy).days
             
@@ -103,7 +109,7 @@ def agregar_cultivo():
     except ValueError:
         return jsonify({"error": "Formato de fecha inválido. Use YYYY-MM-DD (ej: 2026-03-20)."}), 400
 
-    # 3. Preparar el nuevo objeto (Asegurar que todos los campos existan)
+    # 3. Preparar el nuevo objeto
     try:
         nuevo_cultivo = {
             "nombre": datos_cultivo["nombre"],
@@ -154,37 +160,35 @@ def actualizar_cultivo(nombre_cultivo):
     if indice_a_actualizar == -1:
         return jsonify({"error": f"Cultivo '{nombre_cultivo}' no encontrado."}), 404
 
-    # 2. Validar tipos de datos del cuerpo de la petición (Si existen)
-    try:
-        if "fecha_siembra" in datos_actualizados:
-            datetime.strptime(datos_actualizados["fecha_siembra"], '%Y-%m-%d')
-        if "fecha_cosecha" in datos_actualizados:
-            datetime.strptime(datos_actualizados["fecha_cosecha"], '%Y-%m-%d')
-            
-        # Asegurar que los valores numéricos son float/int si están presentes
-        datos_actualizados["precio_compra"] = float(datos_actualizados.get("precio_compra", 
-                                                                           cultivos[indice_a_actualizar].get("precio_compra", 0.0)))
-        datos_actualizados["precio_venta"] = float(datos_actualizados.get("precio_venta", 
-                                                                         cultivos[indice_a_actualizar].get("precio_venta", 0.0)))
-        datos_actualizados["dias_alerta"] = int(datos_actualizados.get("dias_alerta", 
-                                                                      cultivos[indice_a_actualizar].get("dias_alerta", 0)))
-
-    except ValueError:
-        return jsonify({"error": "Formato de fecha o valor numérico inválido. Use YYYY-MM-DD y números."}), 400
-
-    # 3. Actualizar el objeto con los nuevos datos (reemplazo de campos)
     cultivo_existente = cultivos[indice_a_actualizar]
     
+    # 2. Validar tipos de datos y obtener valores, usando los existentes como fallback
+    try:
+        fecha_siembra = datos_actualizados.get("fecha_siembra", cultivo_existente.get("fecha_siembra"))
+        fecha_cosecha = datos_actualizados.get("fecha_cosecha", cultivo_existente.get("fecha_cosecha"))
+        
+        if fecha_siembra:
+            datetime.strptime(fecha_siembra, '%Y-%m-%d')
+        if fecha_cosecha:
+            datetime.strptime(fecha_cosecha, '%Y-%m-%d')
+            
+        precio_compra = float(datos_actualizados.get("precio_compra", cultivo_existente.get("precio_compra", 0.0)))
+        precio_venta = float(datos_actualizados.get("precio_venta", cultivo_existente.get("precio_venta", 0.0)))
+        dias_alerta = int(datos_actualizados.get("dias_alerta", cultivo_existente.get("dias_alerta", 0)))
+
+    except ValueError:
+        return jsonify({"error": "Formato de fecha o valor numérico inválido."}), 400
+
+    # 3. Actualizar el objeto con los nuevos datos
     cultivo_existente.update({
-        # Se usa .get() para actualizar solo los campos que están en el JSON de la petición
         "nombre": datos_actualizados.get("nombre", cultivo_existente.get("nombre")),
-        "fecha_siembra": datos_actualizados.get("fecha_siembra", cultivo_existente.get("fecha_siembra")),
-        "fecha_cosecha": datos_actualizados.get("fecha_cosecha", cultivo_existente.get("fecha_cosecha")),
+        "fecha_siembra": fecha_siembra,
+        "fecha_cosecha": fecha_cosecha,
         "notas": datos_actualizados.get("notas", cultivo_existente.get("notas", "")),
         "zona": datos_actualizados.get("zona", cultivo_existente.get("zona", "")),
-        "precio_compra": datos_actualizados["precio_compra"], # Usamos los valores validados
-        "precio_venta": datos_actualizados["precio_venta"],   # Usamos los valores validados
-        "dias_alerta": datos_actualizados["dias_alerta"]      # Usamos los valores validados
+        "precio_compra": precio_compra,
+        "precio_venta": precio_venta,
+        "dias_alerta": dias_alerta
     })
 
     # 4. Guardar la lista actualizada
