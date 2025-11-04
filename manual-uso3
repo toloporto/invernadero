@@ -1837,7 +1837,162 @@ Implementar un sistema básico de alerta de proximidad de cosecha.
 
 Refinar la interfaz de usuario con mejoras visuales (CSS).
 
+Asistente de programación
+¡Perfecto! Abordaremos estas tres mejoras para llevar tu aplicación al siguiente nivel. Estas mejoras se centran en el Frontend, ya que la lógica de cálculo la haremos directamente en JavaScript, usando los datos ya cargados de la API.
 
+Comenzaremos con la funcionalidad más compleja que es el Cálculo de Rentabilidad y Resumen para añadir valor de negocio a tu dashboard.
+
+🌟 Mejora 1: Cálculo de Rentabilidad y Resumen
+Añadiremos un panel superior que muestre métricas clave como el Costo Total, la Venta Total Estimada y la Ganancia Potencial Total.
+
+1. 📝 Modificación del HTML (index.html)
+Añade un nuevo contenedor (<section>) en el main de tu index.html, justo después del <header> y antes de la sección del formulario (<section class="card" id="form-section">).
+
+HTML
+<main>
+    <section id="resumen-financiero" class="card">
+        <h2>📊 Resumen Financiero Estimado</h2>
+        <div class="kpis">
+            <div class="kpi-item">
+                <h3>Costo Total</h3>
+                <p id="kpiCosto">€0.00</p>
+            </div>
+            <div class="kpi-item">
+                <h3>Venta Total Estimada</h3>
+                <p id="kpiVenta">€0.00</p>
+            </div>
+            <div class="kpi-item profit">
+                <h3>Ganancia Potencial</h3>
+                <p id="kpiGanancia">€0.00</p>
+            </div>
+        </div>
+    </section>
+    <section class="card" id="form-section">
+        </section>
+    
+    </main>
+2. 🎨 Modificación del CSS (styles.css)
+Añade los estilos para el nuevo panel de métricas (KPIs). Puedes añadir este bloque al final de tu archivo styles.css.
+
+CSS
+/* styles.css (Añadir al final del archivo) */
+
+/* Estilos para el Resumen Financiero */
+#resumen-financiero {
+    width: 100%;
+    margin-bottom: 20px;
+    padding: 15px 20px;
+}
+
+#resumen-financiero h2 {
+    border-bottom: none;
+    margin-bottom: 15px;
+}
+
+.kpis {
+    display: flex;
+    justify-content: space-around;
+    gap: 15px;
+    text-align: center;
+}
+
+.kpi-item {
+    background-color: #383838;
+    padding: 10px 15px;
+    border-radius: 6px;
+    flex-grow: 1;
+    border-left: 5px solid var(--color-secondary);
+}
+
+.kpi-item h3 {
+    margin: 0 0 5px 0;
+    font-size: 0.9em;
+    color: #ccc;
+}
+
+.kpi-item p {
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.profit {
+    border-left: 5px solid var(--color-primary); /* Verde para la ganancia */
+}
+3. 💻 Modificación del JavaScript (scripts.js)
+Implementaremos la función para calcular y mostrar el resumen. Esta función debe llamarse cada vez que se cargan o modifican los datos.
+
+Abre scripts.js y haz los siguientes cambios:
+
+A. Nueva Función de Cálculo de KPIs
+Añade la siguiente función, por ejemplo, después de filtrarCultivos:
+
+JavaScript
+// scripts.js (Añadir a la sección de UTILIDAD Y RENDERIZADO)
+
+/**
+ * Calcula y actualiza los KPIs financieros (Costo Total, Venta Estimada, Ganancia Potencial).
+ */
+function actualizarKpis(cultivos) {
+    let costoTotal = 0;
+    let ventaTotal = 0;
+
+    cultivos.forEach(cultivo => {
+        // Asegurarse de que los valores son números antes de sumar
+        costoTotal += parseFloat(cultivo.precio_compra) || 0;
+        ventaTotal += parseFloat(cultivo.precio_venta) || 0;
+    });
+    
+    const gananciaPotencial = ventaTotal - costoTotal;
+
+    // Actualizar los elementos del DOM
+    document.getElementById('kpiCosto').textContent = `€${costoTotal.toFixed(2)}`;
+    document.getElementById('kpiVenta').textContent = `€${ventaTotal.toFixed(2)}`;
+    document.getElementById('kpiGanancia').textContent = `€${gananciaPotencial.toFixed(2)}`;
+    
+    // Opcional: Estilo condicional para la ganancia
+    const gananciaElement = document.getElementById('kpiGanancia');
+    gananciaElement.style.color = gananciaPotencial >= 0 ? 'var(--color-primary)' : 'var(--color-danger)';
+}
+B. Integrar la Función en cargarCultivos
+Modifica la función cargarCultivos para que llame a actualizarKpis después de cargar los datos:
+
+JavaScript
+// scripts.js (Modificación de cargarCultivos, cerca de la línea 15)
+
+async function cargarCultivos() {
+    // ... (Código existente) ...
+    try {
+        const response = await fetch(API_BASE_URL);
+        const cultivos = await response.json();
+        
+        cultivosData = cultivos; 
+        
+        loadingMessage.style.display = 'none'; 
+        renderizarTabla(cultivosData); 
+        
+        // --- INTEGRACIÓN DE LA MEJORA ---
+        actualizarKpis(cultivosData); // <-- LLAMADA NUEVA
+
+    } catch (error) {
+        // ... (Código existente) ...
+    }
+}
+⏭️ Próximos Pasos
+Guarda y reemplaza los tres archivos.
+
+Recarga tu index.html (con el servidor Flask corriendo). Deberías ver el panel de resumen financiero aparecer en la parte superior.
+
+Una vez que confirmes que esta mejora funciona, implementaremos la Alerta de Proximidad de Cosecha y el Refinamiento de la Interfaz (CSS).
+
+¿Pudiste implementar y verificar el panel de Resumen Financiero?
+
+Santiago de Compostela, España  • Actualizar ubicación
+
+
+
+
+Gemini puede cometer errores, incluso sobre personas, así que verifica sus respuestas. Tu privacidad y Gemini
 
 
 
