@@ -2093,7 +2093,60 @@ Una vez que hayas creado y verificado estos dos archivos de configuración (y mo
 
 Gemini puede cometer errores, incluso sobre personas, así que verifica sus respuestas. Tu privacidad y Gemini
 
+Asistente de programación
+¡Absolutamente! Entiendo que quieres un resumen conciso de los pasos necesarios para encender o reactivar la aplicación en el futuro.
 
+Tu aplicación tiene dos componentes independientes: el Frontend (Vercel), que siempre está encendido, y el Backend (Fly.io), que puede entrar en modo stopped (detenido) para ahorrar costes si no tiene tráfico.
+
+Aquí tienes la guía de inicio simplificada.
+
+🚀 Guía Rápida: Cómo Iniciar la Aplicación
+Tu objetivo principal es asegurarte de que la máquina de Fly.io esté en estado started.
+
+Paso 1: Verificar el Estado de la Máquina (Fly.io)
+Abre tu terminal de Windows (PowerShell o CMD) y consulta el estado de tu máquina.
+
+Bash
+flyctl machine list -a nombre-unico-de-tu-api-flask
+(Recuerda reemplazar nombre-unico-de-tu-api-flask por el nombre real de tu app).
+
+Si el estado es started: No tienes que hacer nada, la aplicación ya está activa.
+
+Si el estado es stopped: Pasa al Paso 2.
+
+Paso 2: Iniciar la Máquina (Solo si está Detenida)
+Si la máquina está detenida (stopped), usa el ID de la máquina que obtuviste en el Paso 1 (será un código como e827270c707498) para reactivarla.
+
+Bash
+# Ejemplo, reemplazando el ID
+flyctl machine start [TU_ID_DE_MÁQUINA]
+Espera unos 30 segundos a que Fly.io complete el inicio y monte el disco persistente.
+
+Paso 3: Acceder a la Aplicación
+Una vez que la máquina esté iniciada, todo funcionará automáticamente:
+
+Aplicación Completa (Dashboard): https://ventasinvernadero.vercel.app/
+
+API (Backend): https://nombre-unico-de-tu-api-flask.fly.dev/api/v1/cultivos
+
+📝 Resumen del Proceso de Despliegue (Si haces cambios de Código)
+Si en algún momento modificas el código (en app_backend.py, fly.toml, o los archivos del Frontend), este es el proceso para actualizar la versión en la nube:
+
+Componente	Archivos modificados	Pasos de Actualización
+Backend (Fly.io)	app_backend.py, fly.toml, requirements.txt	1. git add .
+2. git commit -m "Descripción del cambio"
+3. git push
+4. flyctl deploy
+Frontend (Vercel)	scripts.js, index.html, styles.css	1. git add scripts.js (o los archivos modificados)
+2. git commit -m "Descripción del cambio"
+3. git push (Vercel detecta automáticamente el cambio y se despliega solo).
+Con estos pasos, mantienes el control total sobre la activación y actualización de tu aplicación.
+
+
+
+
+
+Gemini puede cometer errores, incluso sobre personas, así que verifica sus respuestas. Tu privacidad y Gemini
 
 
 
