@@ -7,10 +7,10 @@ const form = document.getElementById('cultivoForm');
 const submitButton = document.getElementById('submitButton');
 const originalNameInput = document.getElementById('cultivoNombreOriginal');
 const loadingMessage = document.getElementById('loading-message');
-const searchInput = document.getElementById('cultivoSearch'); // <-- NUEVO: Input de búsqueda
+const searchInput = document.getElementById('cultivoSearch'); 
 
 let modoEdicion = false; 
-let cultivosData = []; // <-- NUEVO: Almacenar los datos cargados de la API
+let cultivosData = []; 
 
 // --- FUNCIONES DE MANEJO DE LA API (CRUD) ---
 
@@ -23,10 +23,10 @@ async function cargarCultivos() {
         const response = await fetch(API_BASE_URL);
         const cultivos = await response.json();
         
-        cultivosData = cultivos; // <-- GUARDAR los datos globalmente
+        cultivosData = cultivos; 
         
-        loadingMessage.style.display = 'none'; // Ocultar mensaje de carga
-        renderizarTabla(cultivosData); // Renderizar todos al inicio
+        loadingMessage.style.display = 'none'; 
+        renderizarTabla(cultivosData); 
 
     } catch (error) {
         console.error('Error al cargar cultivos:', error);
@@ -39,7 +39,7 @@ async function cargarCultivos() {
  * 2. POST / PUT (Crear / Actualizar): Envía datos del formulario a la API.
  */
 async function manejarEnvioFormulario(event) {
-    event.preventDefault(); // Detener el envío por defecto
+    event.preventDefault(); 
 
     const datosCultivo = obtenerDatosFormulario();
 
@@ -47,12 +47,21 @@ async function manejarEnvioFormulario(event) {
         alert('Por favor, rellena el nombre, la fecha de siembra y la fecha de cosecha.');
         return;
     }
+    
+    // -----------------------------------------------------------------
+    //  VALIDACIÓN DE FECHAS (Frontend)
+    // -----------------------------------------------------------------
+    if (!validarFechas(datosCultivo.fecha_siembra, datosCultivo.fecha_cosecha)) {
+        alert('❌ Error: La fecha de cosecha no puede ser anterior a la fecha de siembra.');
+        return; 
+    }
+    // -----------------------------------------------------------------
 
     const nombreOriginal = originalNameInput.value;
     let url = API_BASE_URL;
     let method = 'POST';
     
-    // Si estamos en modo edición, cambiamos el método y la URL
+    // Si estamos en modo edición
     if (modoEdicion) {
         url = `${API_BASE_URL}/${nombreOriginal}`;
         method = 'PUT';
@@ -72,7 +81,7 @@ async function manejarEnvioFormulario(event) {
         if (response.ok) {
             alert(resultado.mensaje || (modoEdicion ? 'Cultivo actualizado.' : 'Cultivo añadido.'));
             resetFormulario();
-            cargarCultivos(); // Recargar la tabla
+            cargarCultivos(); 
         } else {
             alert(`Error ${response.status}: ${resultado.error || 'Algo salió mal en el servidor.'}`);
         }
@@ -99,7 +108,7 @@ async function eliminarCultivo(nombreCultivo) {
 
         if (response.ok) {
             alert(resultado.mensaje || 'Cultivo eliminado.');
-            cargarCultivos(); // Recargar la tabla
+            cargarCultivos(); 
         } else {
             alert(`Error ${response.status}: ${resultado.error || 'No se pudo eliminar el cultivo.'}`);
         }
@@ -116,13 +125,11 @@ function filtrarCultivos() {
     const textoBusqueda = searchInput.value.toLowerCase().trim();
     
     if (textoBusqueda === '') {
-        // Si no hay texto, mostrar todo
         renderizarTabla(cultivosData);
         return;
     }
     
     const cultivosFiltrados = cultivosData.filter(cultivo => {
-        // Concatenar campos relevantes y buscar el texto en ellos
         const contenido = (
             (cultivo.nombre || '') + 
             (cultivo.zona || '') + 
@@ -138,6 +145,20 @@ function filtrarCultivos() {
 
 
 // --- FUNCIONES DE UTILIDAD Y RENDERIZADO ---
+
+/**
+ * Valida que la fecha de cosecha sea posterior o igual a la fecha de siembra.
+ * @returns {boolean} True si las fechas son válidas, false si no.
+ */
+function validarFechas(siembraStr, cosechaStr) {
+    const siembra = Date.parse(siembraStr);
+    const cosecha = Date.parse(cosechaStr);
+
+    if (siembra > cosecha) {
+        return false;
+    }
+    return true;
+}
 
 /**
  * Recopila los datos del formulario.
@@ -165,7 +186,7 @@ function renderizarTabla(cultivos) {
         const row = tableBody.insertRow();
         const cell = row.insertCell();
         cell.colSpan = 7;
-        cell.textContent = 'No se encontraron cultivos que coincidan con la búsqueda.';
+        cell.textContent = 'No se encontraron cultivos.';
         cell.style.textAlign = 'center';
         return;
     }
@@ -174,17 +195,14 @@ function renderizarTabla(cultivos) {
         const row = tableBody.insertRow();
         let claseCosecha = 'cosecha-futura';
         
-        // Determinar la clase CSS según el estado de días_restantes
         if (cultivo.dias_restantes && cultivo.dias_restantes.includes('COSECHA HOY')) {
             claseCosecha = 'cosecha-hoy';
         } else if (cultivo.dias_restantes && cultivo.dias_restantes.includes('Cosechado hace')) {
             claseCosecha = 'cosecha-pasada';
         }
         
-        // Calcular margen potencial
         const margen = (cultivo.precio_venta - cultivo.precio_compra).toFixed(2);
         
-        // Renderizado de las celdas
         row.insertCell().textContent = cultivo.nombre;
         row.insertCell().textContent = cultivo.zona;
         row.insertCell().textContent = cultivo.fecha_siembra;
@@ -196,7 +214,6 @@ function renderizarTabla(cultivos) {
         
         row.insertCell().textContent = `€${margen}`;
 
-        // Celda de Acciones (Botones)
         const cellAcciones = row.insertCell();
         cellAcciones.classList.add('action-buttons');
         
@@ -231,12 +248,11 @@ function cargarParaEdicion(cultivo) {
     
     // 2. Configurar el modo edición
     modoEdicion = true;
-    originalNameInput.value = cultivo.nombre; // Guardar el nombre original para la URL PUT/DELETE
+    originalNameInput.value = cultivo.nombre; 
     submitButton.textContent = `Guardar Cambios de ${cultivo.nombre}`;
     submitButton.classList.add('edit-btn');
     submitButton.classList.remove('delete-btn');
     
-    // Opcional: Desplazar la vista al formulario 
     document.getElementById('form-section').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -250,7 +266,7 @@ function resetFormulario() {
     submitButton.textContent = 'Añadir Cultivo';
     submitButton.classList.remove('edit-btn');
     submitButton.classList.remove('delete-btn');
-    // Asegurar valores por defecto después del reset()
+    
     document.getElementById('precio_compra').value = '0.00';
     document.getElementById('precio_venta').value = '0.00';
     document.getElementById('dias_alerta').value = '7';
@@ -259,11 +275,8 @@ function resetFormulario() {
 
 // --- INICIALIZACIÓN ---
 
-// Escucha el evento de envío del formulario
 form.addEventListener('submit', manejarEnvioFormulario);
-
-// Escucha el evento 'input' en la barra de búsqueda para filtrar dinámicamente
-searchInput.addEventListener('input', filtrarCultivos); // <-- LISTENER DE BÚSQUEDA
+searchInput.addEventListener('input', filtrarCultivos); 
 
 // Botón de Cancelar Edición
 const btnCancelar = document.createElement('button');
