@@ -1743,6 +1743,87 @@ Asegúrate de que Flask esté corriendo.
 Recarga tu index.html en el navegador.
 
 Ahora deberías tener una barra de búsqueda funcional. Una vez que verifiques que el filtro funciona, ¿quieres que abordemos la validación de fechas en el frontend (por ejemplo, evitar que la fecha de cosecha sea anterior a la de siembra) como otra mejora de usabilidad?
+Asistente de programación
+¡Me parece una excelente mejora! La Validación de Fechas en el Frontend evitará errores lógicos antes de enviar los datos al servidor, mejorando la experiencia del usuario y la integridad de la base de datos.
+
+Implementaremos una función en JavaScript que se ejecuta cuando el usuario envía el formulario. Esta función verificará que la fecha de cosecha no sea anterior a la fecha de siembra.
+
+📝 Modificación del JavaScript (scripts.js)
+Vamos a modificar las funciones manejarEnvioFormulario y obtenerDatosFormulario en tu archivo scripts.js.
+
+1. Crear una Función de Validación de Fechas
+Añade esta función de utilidad para la validación (puedes añadirla después de obtenerDatosFormulario):
+
+JavaScript
+// scripts.js (Añadir a la sección de UTILIDAD Y RENDERIZADO)
+
+/**
+ * Valida que la fecha de cosecha sea posterior o igual a la fecha de siembra.
+ * @returns {boolean} True si las fechas son válidas, false si no.
+ */
+function validarFechas(siembraStr, cosechaStr) {
+    // Convertir las cadenas de fecha (YYYY-MM-DD) a objetos Date
+    // Usamos el formato Date.parse para comparar los milisegundos
+    const siembra = Date.parse(siembraStr);
+    const cosecha = Date.parse(cosechaStr);
+
+    // Siembra y Cosecha son válidas (no NaN) y Cosecha es anterior a Siembra
+    if (siembra > cosecha) {
+        return false;
+    }
+    return true;
+}
+2. Implementar la Validación en el Manejo del Formulario
+Ahora, actualiza la función manejarEnvioFormulario para llamar a la nueva función de validación antes de hacer la llamada a la API.
+
+Busca la función manejarEnvioFormulario (cerca de la línea 40) y añade el bloque de validación.
+
+JavaScript
+// scripts.js (Modificación de manejarEnvioFormulario)
+
+async function manejarEnvioFormulario(event) {
+    event.preventDefault(); // Detener el envío por defecto
+
+    const datosCultivo = obtenerDatosFormulario();
+
+    if (!datosCultivo.nombre || !datosCultivo.fecha_siembra || !datosCultivo.fecha_cosecha) {
+        alert('Por favor, rellena el nombre, la fecha de siembra y la fecha de cosecha.');
+        return;
+    }
+    
+    // -----------------------------------------------------------------
+    //  NUEVA VALIDACIÓN DE FECHAS (Frontend)
+    // -----------------------------------------------------------------
+    if (!validarFechas(datosCultivo.fecha_siembra, datosCultivo.fecha_cosecha)) {
+        alert('❌ Error: La fecha de cosecha no puede ser anterior a la fecha de siembra.');
+        // Evita que el código continúe con el fetch
+        return; 
+    }
+    // -----------------------------------------------------------------
+
+    const nombreOriginal = originalNameInput.value;
+    // ... (El resto del código del fetch sigue igual)
+    // ...
+}
+3. ✅ Prueba de la Mejora
+Guarda el archivo scripts.js con la nueva función y la modificación en manejarEnvioFormulario.
+
+Recarga index.html en tu navegador.
+
+Intenta añadir o editar un cultivo con estas fechas:
+
+Fecha Siembra: 2025-12-30
+
+Fecha Cosecha: 2025-12-01
+
+Resultado esperado: El sistema debe mostrar el mensaje de error: "❌ Error: La fecha de cosecha no puede ser anterior a la fecha de siembra." y NO debe enviar la petición a la API.
+
+Con esta mejora, tu frontend es mucho más inteligente y proporciona una mejor retroalimentación al usuario.
+
+¿Pudiste implementar y probar la validación de fechas con éxito? Si es así, ¿qué otra mejora quieres implementar, o preferirías pasar a probar la eliminación (DELETE) para cerrar el ciclo CRUD?
+
+
+
 
 
 
